@@ -16,11 +16,11 @@
     "ask": [
       "Bash(xcrun simctl erase *)",
       "Bash(xcrun simctl delete *)",
-      "Edit(**/*.pbxproj)"
+      "Edit(**/*.pbxproj)",
+      "Bash(git push *)"
     ],
     "deny": [
       "Bash(rm -rf *)",
-      "Bash(git push *)",
       "Bash(git reset --hard *)",
       "Read(**/.env)",
       "Read(**/.env.*)",
