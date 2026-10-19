@@ -14,6 +14,7 @@ iOS-застосунок для перемикачів-нагадувань: к�
 
 - `Switcher/` — код застосунку
 - `SwitcherTests/` — модульні тести
+- `scripts/` — службові shell-скрипти (не входять у Xcode-таргети)
 - `Switcher.xcodeproj` — теки синхронізуються з файловою системою, нові файли додавати до `.pbxproj` не треба
 
 ## Команди
@@ -26,6 +27,9 @@ xcodebuild build -project Switcher.xcodeproj -scheme Switcher \
 # Тести
 xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
   -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
+
+# Перевірка конфігу permissions/sandbox і захисту секретів (після змін у .claude/settings.json або .gitignore)
+bash scripts/sandbox-leak.test.sh
 ```
 
 Якщо `xcode-select -p` вказує на CommandLineTools, перед командою треба задати `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
