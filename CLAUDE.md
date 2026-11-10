@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Switcher
 
 iOS-застосунок для перемикачів-нагадувань: користувач вмикає перемикач («полила квіти», «газ горить», «двері зачинені»), застосунок записує дату й час і зберігає історію.
@@ -8,12 +12,13 @@ iOS-застосунок для перемикачів-нагадувань: к�
 - Заплановано: UserNotifications (локальні), WidgetKit + App Intents
 - Без сторонніх залежностей
 - Мінімальна версія iOS — 18.0; API з новіших версій лише через `if #available`
-- Типова ізоляція акторів у застосунку — `MainActor`
+- Типова ізоляція акторів у застосунку — `MainActor`, увімкнено Approachable Concurrency (`SWIFT_APPROACHABLE_CONCURRENCY`): код без анотацій виконується на головному акторі, фонову роботу позначати явно (`nonisolated`, `@concurrent`)
+- Лише iPhone (`TARGETED_DEVICE_FAMILY = 1`)
 
 ## Структура
 
 - `Switcher/` — код застосунку
-- `SwitcherTests/` — модульні тести
+- `SwitcherTests/` — модульні тести; запускаються всередині застосунку (`TEST_HOST`), доступ до коду через `@testable import Switcher`
 - `scripts/` — службові shell-скрипти (не входять у Xcode-таргети)
 - `Switcher.xcodeproj` — теки синхронізуються з файловою системою, нові файли додавати до `.pbxproj` не треба
 
@@ -28,11 +33,18 @@ xcodebuild build -project Switcher.xcodeproj -scheme Switcher \
 xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
   -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
 
+# Один тест (Swift Testing: Таргет/Структура/функція() — з дужками)
+xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
+  -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO \
+  -only-testing:'SwitcherTests/SwitcherTests/appModuleLoads()'
+
 # Перевірка конфігу permissions/sandbox і захисту секретів (після змін у .claude/settings.json або .gitignore)
 bash scripts/sandbox-leak.test.sh
 ```
 
 Якщо `xcode-select -p` вказує на CommandLineTools, перед командою треба задати `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
+
+Пісочниця Bash блокує служби симулятора (CoreSimulatorService), тому `xcodebuild test` і `xcrun simctl` треба запускати поза нею — інакше падіння з «Connection refused» / «Operation not permitted», і це не помилка в коді.
 
 ## Домовленості
 
