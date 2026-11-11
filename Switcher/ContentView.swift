@@ -6,6 +6,10 @@ struct ContentView: View {
     @Query(sort: \SwitchItem.createdAt) private var items: [SwitchItem]
     @State private var isAddingSwitch = false
     @State private var selectedItem: SwitchItem?
+    /// Перемикач, щодо якого показано підтвердження видалення.
+    @State private var itemPendingDeletion: SwitchItem?
+    /// Заголовок підтвердження. Запам'ятовується під час свайпу: поки вікно зникає, перемикача вже може не бути.
+    @State private var deletionTitle = ""
     @Environment(\.now) private var now
 
     private var onCount: Int {
@@ -31,8 +35,25 @@ struct ContentView: View {
             .sheet(isPresented: $isAddingSwitch) {
                 AddSwitchView()
             }
+            .alert(deletionTitle, isPresented: isConfirmingDeletion, presenting: itemPendingDeletion) { item in
+                Button(SwitchDeletion.confirmButtonTitle, role: .destructive) {
+                    withAnimation {
+                        SwitchDeletion.delete(item, from: modelContext)
+                    }
+                }
+                Button(SwitchDeletion.cancelButtonTitle, role: .cancel) {}
+            } message: { _ in
+                Text(SwitchDeletion.confirmationMessage)
+            }
         }
         .tint(Theme.ink)
+    }
+
+    private var isConfirmingDeletion: Binding<Bool> {
+        Binding(
+            get: { itemPendingDeletion != nil },
+            set: { if !$0 { itemPendingDeletion = nil } }
+        )
     }
 
     private var header: some View {
@@ -77,8 +98,15 @@ struct ContentView: View {
                 .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
+                .swipeActions(edge: .trailing) {
+                    // Без ролі destructive: з нею список прибирає рядок одразу, не чекаючи підтвердження.
+                    Button("Видалити") {
+                        deletionTitle = SwitchDeletion.confirmationTitle(for: item.name)
+                        itemPendingDeletion = item
+                    }
+                    .tint(.red)
+                }
             }
-            .onDelete(perform: deleteItems)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -119,12 +147,6 @@ struct ContentView: View {
         .padding(.horizontal, 36)
         .padding(.bottom, 80)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func deleteItems(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(items[index])
-        }
     }
 }
 

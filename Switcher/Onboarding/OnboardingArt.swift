@@ -169,3 +169,72 @@ struct HistoryArt: View {
         .shadow(color: OnboardingPalette.cardInk.opacity(0.18), radius: 12, y: 10)
     }
 }
+
+/// Третій слайд: картка перемикача від'їжджає ліворуч і відкриває червону зону зі смітником.
+struct DeletionArt: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isSwiped = true
+
+    private let swipeDistance: CGFloat = 76
+
+    var body: some View {
+        ZStack {
+            OnboardingPalette.mint
+            VStack(spacing: 10) {
+                card("Полила квіти", color: OnboardingPalette.sun, isOn: true)
+                card("Праска вимкнена", color: OnboardingPalette.sky, isOn: false)
+                    .offset(x: isSwiped ? -swipeDistance : 0)
+                    .background { trashZone }
+                card("Двері зачинені", color: OnboardingPalette.sky, isOn: true)
+            }
+            .padding(.horizontal, 24)
+            .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isSwiped)
+        }
+        .task {
+            guard !reduceMotion else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1.8))
+                isSwiped.toggle()
+            }
+        }
+    }
+
+    private var trashZone: some View {
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .fill(OnboardingPalette.tomato)
+            // Трохи менша за картку, щоб не визирала з-під її країв.
+            .padding(2)
+            .overlay(alignment: .trailing) {
+                Image(systemName: "trash.fill")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.white)
+                    .symbolEffect(.bounce, value: isSwiped)
+                    .frame(width: swipeDistance)
+            }
+    }
+
+    private func card(_ name: String, color: Color, isOn: Bool) -> some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(color)
+                .frame(width: 14, height: 14)
+            Text(name)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(OnboardingPalette.ink)
+            Spacer()
+            Capsule()
+                .fill(isOn ? color : OnboardingPalette.line)
+                .frame(width: 40, height: 24)
+                .overlay(alignment: isOn ? .trailing : .leading) {
+                    Circle()
+                        .fill(.white)
+                        .frame(width: 18, height: 18)
+                        .padding(3)
+                }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(OnboardingPalette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: OnboardingPalette.cardInk.opacity(0.18), radius: 12, y: 10)
+    }
+}

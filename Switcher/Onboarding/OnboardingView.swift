@@ -20,10 +20,10 @@ struct OnboardingView: View {
     let onFinish: () -> Void
 
     @State private var page = 0
-    private let pageCount = 2
+    private let slides = OnboardingSlide.allCases
 
     private var isLastPage: Bool {
-        page == pageCount - 1
+        slides[page].isLast
     }
 
     var body: some View {
@@ -38,20 +38,12 @@ struct OnboardingView: View {
             .padding(.horizontal, 22)
 
             TabView(selection: $page) {
-                OnboardingPage(
-                    title: "Клац — і спокій",
-                    text: "Вимкнула праску? Зачинила двері? Перемкніть — і більше не сумнівайтеся."
-                ) {
-                    ToggleArt()
+                ForEach(slides.indices, id: \.self) { index in
+                    OnboardingPage(title: slides[index].title, text: slides[index].text) {
+                        art(for: slides[index])
+                    }
+                    .tag(index)
                 }
-                .tag(0)
-                OnboardingPage(
-                    title: "Пам'ятає за вас",
-                    text: "Кожне перемикання зберігається з датою й часом. Історія завжди під рукою."
-                ) {
-                    HistoryArt()
-                }
-                .tag(1)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
 
@@ -69,9 +61,18 @@ struct OnboardingView: View {
         .background(OnboardingPalette.background.ignoresSafeArea())
     }
 
+    @ViewBuilder
+    private func art(for slide: OnboardingSlide) -> some View {
+        switch slide {
+        case .toggle: ToggleArt()
+        case .history: HistoryArt()
+        case .deletion: DeletionArt()
+        }
+    }
+
     private var dots: some View {
         HStack(spacing: 8) {
-            ForEach(0..<pageCount, id: \.self) { index in
+            ForEach(slides.indices, id: \.self) { index in
                 Capsule()
                     .fill(index == page ? OnboardingPalette.ink : OnboardingPalette.line)
                     .frame(width: index == page ? 30 : 8, height: 8)
