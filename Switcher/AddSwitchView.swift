@@ -11,8 +11,8 @@ struct AddSwitchView: View {
     @State private var previewIsOn = false
     @FocusState private var isNameFocused: Bool
 
-    private var trimmedName: String {
-        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var savedName: String {
+        SwitchName.forSaving(name)
     }
 
     var body: some View {
@@ -31,8 +31,8 @@ struct AddSwitchView: View {
                             .frame(height: 44)
                             .background(Theme.ink, in: Capsule())
                     }
-                    .opacity(trimmedName.isEmpty ? 0.4 : 1)
-                    .disabled(trimmedName.isEmpty)
+                    .opacity(savedName.isEmpty ? 0.4 : 1)
+                    .disabled(savedName.isEmpty)
                 }
                 Text("Новий перемикач")
                     .font(.title.bold())
@@ -49,6 +49,19 @@ struct AddSwitchView: View {
                         .frame(height: 56)
                         .background(Theme.surface, in: shape)
                         .overlay(shape.strokeBorder(Theme.ink, lineWidth: 2).opacity(isNameFocused ? 1 : 0))
+                        // Понад межу текст не пропускається — ні під час друкування, ні під час вставки.
+                        // Присвоюємо лише змінений текст, тож повторний виклик нічого не змінює й циклу немає.
+                        .onChange(of: name) { _, newValue in
+                            let limited = SwitchName.limited(newValue)
+                            if limited != newValue { name = limited }
+                        }
+                    Text(SwitchName.counterText(for: name))
+                        .font(.footnote.weight(.medium))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.muted)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.horizontal, 4)
+                        .accessibilityLabel(SwitchName.counterAccessibilityLabel(for: name))
                 }
                 field("Колір") {
                     TonePicker(selection: $tone)
@@ -80,7 +93,7 @@ struct AddSwitchView: View {
     private var preview: some View {
         HStack(spacing: 14) {
             SwitchCardLabel(
-                name: trimmedName.isEmpty ? "Назва перемикача" : trimmedName,
+                name: savedName.isEmpty ? "Назва перемикача" : savedName,
                 status: "Ще не перемикали",
                 icon: icon,
                 tone: tone,
@@ -103,8 +116,8 @@ struct AddSwitchView: View {
     }
 
     private func save() {
-        guard !trimmedName.isEmpty else { return }
-        modelContext.insert(SwitchItem(name: trimmedName, icon: icon, tone: tone))
+        guard !savedName.isEmpty else { return }
+        modelContext.insert(SwitchItem(name: savedName, icon: icon, tone: tone))
         dismiss()
     }
 }
