@@ -20,6 +20,7 @@ iOS-застосунок для перемикачів-нагадувань: к�
 - `Switcher/` — код застосунку
 - `SwitcherTests/` — модульні тести; запускаються всередині застосунку (`TEST_HOST`), доступ до коду через `@testable import Switcher`
 - `scripts/` — службові shell-скрипти (не входять у Xcode-таргети)
+- `.claude/agents/` — субагенти проєкту: `feature-developer`, `tester`, `code-reviewer`, `apple-api-researcher`
 - `Switcher.xcodeproj` — теки синхронізуються з файловою системою, нові файли додавати до `.pbxproj` не треба
 
 ## Команди
