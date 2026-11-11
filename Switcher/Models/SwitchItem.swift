@@ -56,6 +56,17 @@ final class SwitchItem {
         SwitchFormatting.status(isOn: isOn, lastToggledAt: lastToggledAt, now: now, calendar: calendar)
     }
 
+    /// Зберігає назву з поля редагування (див. `SwitchName.forSaving`). Незмінений текст не чіпає
+    /// назви — стара довга назва лишається повною; порожній після обрізання текст назви не змінює.
+    /// Ту саму назву не присвоює повторно, щоб модель не позначалася зміненою.
+    /// Історії, стану й вигляду не змінює.
+    func rename(to text: String) {
+        guard text != name else { return }
+        let saved = SwitchName.forSaving(text)
+        guard !saved.isEmpty, saved != name else { return }
+        name = saved
+    }
+
     /// Змінює стан і записує подію в історію; повторне встановлення того самого стану нічого не робить.
     func setOn(_ newValue: Bool, at date: Date = .now) {
         guard newValue != isOn else { return }

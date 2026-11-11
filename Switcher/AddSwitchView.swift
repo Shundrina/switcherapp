@@ -49,11 +49,11 @@ struct AddSwitchView: View {
                         .frame(height: 56)
                         .background(Theme.surface, in: shape)
                         .overlay(shape.strokeBorder(Theme.ink, lineWidth: 2).opacity(isNameFocused ? 1 : 0))
-                        // Понад межу текст не пропускається — ні під час друкування, ні під час вставки.
+                        // У повне поле нові символи не вводяться, а вставка лишає перші 30 символів.
                         // Присвоюємо лише змінений текст, тож повторний виклик нічого не змінює й циклу немає.
-                        .onChange(of: name) { _, newValue in
-                            let limited = SwitchName.limited(newValue)
-                            if limited != newValue { name = limited }
+                        .onChange(of: name) { old, new in
+                            let accepted = SwitchName.fieldText(from: old, to: new)
+                            if accepted != new { name = accepted }
                         }
                     Text(SwitchName.counterText(for: name))
                         .font(.footnote.weight(.medium))

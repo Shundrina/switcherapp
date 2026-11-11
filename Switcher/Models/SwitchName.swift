@@ -10,6 +10,38 @@ nonisolated enum SwitchName {
         text.count > maxLength ? String(text.prefix(maxLength)) : text
     }
 
+    /// Що лишається в полі «Назва» після зміни тексту з `old` на `new`.
+    /// У повне поле нові символи не вводяться — лишається `old`; вставка в неповне поле
+    /// і будь-яка правка старої назви, довшої за межу, лишають перші `maxLength` символів.
+    static func fieldText(from old: String, to new: String) -> String {
+        if new.count <= maxLength { return new }
+        return old.count == maxLength ? old : limited(new)
+    }
+
+    /// Що робить багаторядкове поле «Назва», коли текст змінюється з `old` на `new`.
+    /// Якщо додано лише переноси рядка — це «Готово»: текст лишається `old`, редагування завершується.
+    /// Переноси разом з іншим текстом (вставка, диктування) стають пробілами — кожна послідовність
+    /// одним, — і редагування триває. Межу довжини застосовує `fieldText(from:to:)`.
+    static func fieldEdit(from old: String, to new: String) -> (text: String, finishesEditing: Bool) {
+        guard new.contains(where: \.isNewline) else {
+            return (fieldText(from: old, to: new), false)
+        }
+        if new.filter({ !$0.isNewline }) == old { return (old, true) }
+
+        var joined = ""
+        var previousIsNewline = false
+        for character in new {
+            if character.isNewline {
+                if !previousIsNewline { joined.append(" ") }
+                previousIsNewline = true
+            } else {
+                joined.append(character)
+                previousIsNewline = false
+            }
+        }
+        return (fieldText(from: old, to: joined), false)
+    }
+
     /// Назва для `SwitchItem`: без пробілів і переносів по краях, не довша за `maxLength`.
     static func forSaving(_ text: String) -> String {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
