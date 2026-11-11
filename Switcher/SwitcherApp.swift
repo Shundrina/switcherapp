@@ -5,7 +5,7 @@ import SwiftUI
 struct SwitcherApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
         .modelContainer(for: SwitchItem.self)
     }

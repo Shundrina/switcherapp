@@ -2,32 +2,111 @@ import SwiftData
 import SwiftUI
 
 struct SwitchHistoryView: View {
-    let item: SwitchItem
+    @Bindable var item: SwitchItem
 
     var body: some View {
-        List(item.sortedEvents) { event in
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(event.isOn ? "Увімкнено" : "Вимкнено")
-                    Text(event.timestamp.formatted(date: .long, time: .shortened))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                hero
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Колір")
+                        .capsStyle()
+                        .padding(.horizontal, 4)
+                    TonePicker(selection: $item.tone)
                 }
-            } icon: {
-                Image(systemName: event.isOn ? "power.circle.fill" : "power.circle")
-                    .foregroundStyle(event.isOn ? .green : .secondary)
+                Text("Історія")
+                    .font(.title3.bold())
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, 4)
+                history
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
         }
-        .overlay {
-            if item.sortedEvents.isEmpty {
-                ContentUnavailableView(
-                    "Історія порожня",
-                    systemImage: "clock",
-                    description: Text("Тут з'являться дата й час кожного перемикання.")
-                )
-            }
-        }
-        .navigationTitle(item.name)
+        .background(Theme.background)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                IconBubble(icon: item.icon, tone: item.tone, isOn: item.isOn, size: 56)
+                Spacer()
+                Toggle(item.name, isOn: Binding(
+                    get: { item.isOn },
+                    set: { item.setOn($0) }
+                ))
+                .labelsHidden()
+                .toggleStyle(LampToggleStyle(large: true))
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.name)
+                    .font(.title.bold())
+                    .foregroundStyle(item.isOn ? Theme.onTone : Theme.ink)
+                Text(item.statusText())
+                    .font(.subheadline.weight(.medium))
+                    .monospacedDigit()
+                    .foregroundStyle(item.isOn ? Theme.onTone.opacity(0.8) : Theme.muted)
+            }
+            .animation(.easeInOut(duration: 0.3), value: item.isOn)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .switchCard(isOn: item.isOn, tone: item.tone, cornerRadius: 28, origin: UnitPoint(x: 0.86, y: 0.24))
+    }
+
+    @ViewBuilder
+    private var history: some View {
+        let days = item.historyDays()
+        if days.isEmpty {
+            Text("Тут з'являться дата й час кожного перемикання.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.muted)
+                .padding(.horizontal, 4)
+        } else {
+            ForEach(days) { day in
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(SwitchFormatting.dayTitle(day.date))
+                        .capsStyle()
+                        .padding(.horizontal, 4)
+                    VStack(spacing: 0) {
+                        ForEach(Array(day.events.enumerated()), id: \.element.id) { index, event in
+                            if index > 0 {
+                                Rectangle()
+                                    .fill(Theme.line)
+                                    .frame(height: 1)
+                            }
+                            EventRow(event: event, tone: item.tone)
+                        }
+                    }
+                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                }
+            }
+        }
+    }
+}
+
+private struct EventRow: View {
+    let event: SwitchEvent
+    let tone: SwitchTone
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(event.isOn ? tone.color : Theme.surface)
+                .overlay(Circle().strokeBorder(event.isOn ? Theme.ink : Theme.track, lineWidth: 2))
+                .frame(width: 14, height: 14)
+                .accessibilityHidden(true)
+            Text(event.isOn ? "Увімкнено" : "Вимкнено")
+                .font(.body.weight(.medium))
+                .foregroundStyle(Theme.ink)
+            Spacer()
+            Text(SwitchFormatting.time(event.timestamp))
+                .font(.subheadline.weight(.medium))
+                .monospacedDigit()
+                .foregroundStyle(Theme.muted)
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: 52)
     }
 }
