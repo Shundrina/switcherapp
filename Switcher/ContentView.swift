@@ -6,6 +6,7 @@ struct ContentView: View {
     @Query(sort: \SwitchItem.createdAt) private var items: [SwitchItem]
     @State private var isAddingSwitch = false
     @State private var selectedItem: SwitchItem?
+    @Environment(\.now) private var now
 
     private var onCount: Int {
         items.filter(\.isOn).count
@@ -37,7 +38,7 @@ struct ContentView: View {
     private var header: some View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(SwitchFormatting.locale)))
+                Text(now.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(SwitchFormatting.locale)))
                     .capsStyle()
                 Text("Перемикачі")
                     .font(.largeTitle.bold())
@@ -130,11 +131,12 @@ struct ContentView: View {
 private struct SwitchRow: View {
     let item: SwitchItem
     let onOpen: () -> Void
+    @Environment(\.now) private var now
 
     var body: some View {
         HStack(spacing: 14) {
             Button(action: onOpen) {
-                SwitchCardLabel(name: item.name, status: item.statusText(), icon: item.icon, tone: item.tone, isOn: item.isOn)
+                SwitchCardLabel(name: item.name, status: item.statusText(now: now), icon: item.icon, tone: item.tone, isOn: item.isOn)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

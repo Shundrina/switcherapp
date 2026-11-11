@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SwitchHistoryView: View {
     @Bindable var item: SwitchItem
+    @Environment(\.now) private var now
 
     var body: some View {
         ScrollView {
@@ -43,7 +44,7 @@ struct SwitchHistoryView: View {
                 Text(item.name)
                     .font(.title.bold())
                     .foregroundStyle(item.isOn ? Theme.onTone : Theme.ink)
-                Text(item.statusText())
+                Text(item.statusText(now: now))
                     .font(.subheadline.weight(.medium))
                     .monospacedDigit()
                     .foregroundStyle(item.isOn ? Theme.onTone.opacity(0.8) : Theme.muted)
@@ -66,7 +67,7 @@ struct SwitchHistoryView: View {
         } else {
             ForEach(days) { day in
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(SwitchFormatting.dayTitle(day.date))
+                    Text(SwitchFormatting.dayTitle(day.date, now: now))
                         .capsStyle()
                         .padding(.horizontal, 4)
                     VStack(spacing: 0) {

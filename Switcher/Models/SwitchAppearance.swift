@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum SwitchIcon: String, CaseIterable, Identifiable {
+nonisolated enum SwitchIcon: String, CaseIterable, Identifiable {
     case drop, flame, lock, pill, power, bell, clock, check
 
     var id: String { rawValue }
@@ -34,7 +34,7 @@ enum SwitchIcon: String, CaseIterable, Identifiable {
 }
 
 /// Колір увімкненого перемикача. Усі кольори достатньо світлі для темного тексту.
-enum SwitchTone: String, CaseIterable, Identifiable {
+nonisolated enum SwitchTone: String, CaseIterable, Identifiable {
     case amber, coral, mint, sky, lilac, pink
 
     var id: String { rawValue }

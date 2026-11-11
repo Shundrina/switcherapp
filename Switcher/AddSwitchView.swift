@@ -6,7 +6,7 @@ struct AddSwitchView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var name = ""
-    @State private var icon = SwitchIcon.drop
+    @State private var icon = SwitchIcon.check
     @State private var tone = SwitchTone.amber
     @State private var previewIsOn = false
     @FocusState private var isNameFocused: Bool

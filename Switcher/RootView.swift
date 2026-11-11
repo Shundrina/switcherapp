@@ -8,6 +8,7 @@ struct RootView: View {
         ZStack {
             if hasSeenOnboarding {
                 ContentView()
+                    .tracksCurrentDate()
                     .transition(.opacity)
             } else {
                 OnboardingView {
