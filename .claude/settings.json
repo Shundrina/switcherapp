@@ -43,7 +43,8 @@
       "xcrun *",
       "swift build *",
       "swift test *",
-      "swift package *"
+      "swift package *",
+      "git push *"
     ],
     "filesystem": {
       "denyRead": [
