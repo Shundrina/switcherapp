@@ -98,6 +98,7 @@ struct SwitchHistoryView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(item.name)
         .accessibilityHint("Змінити назву")
+        .accessibilityIdentifier("switchNameButton")
     }
 
     private var nameField: some View {
@@ -112,6 +113,7 @@ struct SwitchHistoryView: View {
             .font(.title.bold())
             .foregroundStyle(item.isOn ? Theme.onTone : Theme.ink)
             .tint(item.isOn ? Theme.onTone : Theme.ink)
+            .accessibilityIdentifier("switchNameEditField")
             .focused($isNameFocused)
             .submitLabel(.done)
             .onSubmit(finishNameEditing)
@@ -131,6 +133,7 @@ struct SwitchHistoryView: View {
                 .foregroundStyle(item.isOn ? Theme.onTone.opacity(0.8) : Theme.muted)
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .accessibilityLabel(SwitchName.counterAccessibilityLabel(for: draft))
+                .accessibilityIdentifier("switchNameEditCounter")
                 .modifier(EndsEditingOnTap(isEnabled: isEditingName, action: finishNameEditing))
         }
     }
@@ -167,6 +170,7 @@ struct SwitchHistoryView: View {
                 .font(.subheadline)
                 .foregroundStyle(Theme.muted)
                 .padding(.horizontal, 4)
+                .accessibilityIdentifier("historyEmptyText")
         } else {
             ForEach(days) { day in
                 VStack(alignment: .leading, spacing: 8) {
@@ -225,5 +229,8 @@ private struct EventRow: View {
         }
         .padding(.horizontal, 16)
         .frame(minHeight: 52)
+        // Для VoiceOver запис — один елемент: «Увімкнено, 14:05».
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("historyEvent")
     }
 }

@@ -33,6 +33,7 @@ struct AddSwitchView: View {
                     }
                     .opacity(savedName.isEmpty ? 0.4 : 1)
                     .disabled(savedName.isEmpty)
+                    .accessibilityIdentifier("addSwitchSaveButton")
                 }
                 Text("Новий перемикач")
                     .font(.title.bold())
@@ -42,6 +43,7 @@ struct AddSwitchView: View {
                     let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
                     TextField("Наприклад, «Вимкнула плиту»", text: $name)
                         .font(.body.weight(.medium))
+                        .accessibilityIdentifier("addSwitchNameField")
                         .focused($isNameFocused)
                         .submitLabel(.done)
                         .onSubmit(save)
@@ -62,6 +64,7 @@ struct AddSwitchView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .padding(.horizontal, 4)
                         .accessibilityLabel(SwitchName.counterAccessibilityLabel(for: name))
+                        .accessibilityIdentifier("addSwitchNameCounter")
                 }
                 field("Колір") {
                     TonePicker(selection: $tone)

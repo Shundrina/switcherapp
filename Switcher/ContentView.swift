@@ -83,6 +83,7 @@ struct ContentView: View {
                     .background(Theme.ink, in: Circle())
             }
             .accessibilityLabel("Додати перемикач")
+            .accessibilityIdentifier("addSwitchButton")
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -163,6 +164,7 @@ private struct SwitchRow: View {
             }
             .buttonStyle(.plain)
             .accessibilityHint("Відкрити історію")
+            .accessibilityIdentifier("switchRowOpenButton")
 
             Toggle(item.name, isOn: Binding(
                 get: { item.isOn },
@@ -170,6 +172,7 @@ private struct SwitchRow: View {
             ))
             .labelsHidden()
             .toggleStyle(LampToggleStyle())
+            .accessibilityIdentifier("switchRowToggle")
         }
         .padding(16)
         .switchCard(isOn: item.isOn, tone: item.tone)
