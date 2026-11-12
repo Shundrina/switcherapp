@@ -19,6 +19,7 @@ iOS-застосунок для перемикачів-нагадувань: к�
 
 - `Switcher/` — код застосунку
 - `SwitcherTests/` — модульні тести; запускаються всередині застосунку (`TEST_HOST`), доступ до коду через `@testable import Switcher`
+- `SwitcherUITests/` — екранні тести (XCUITest): запускають застосунок у симуляторі й натискають, свайпають, вводять текст. Код застосунку їм недоступний — лише те, що на екрані
 - `scripts/` — службові shell-скрипти (не входять у Xcode-таргети)
 - `.claude/agents/` — субагенти проєкту: `apple-api-researcher`, `test-author`, `implementer`, `reviewer`, `tester` (порядок роботи — у розділі «Робота з агентами»)
 - `Switcher.xcodeproj` — теки синхронізуються з файловою системою, нові файли додавати до `.pbxproj` не треба
@@ -30,14 +31,25 @@ iOS-застосунок для перемикачів-нагадувань: к�
 xcodebuild build -project Switcher.xcodeproj -scheme Switcher \
   -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
 
-# Тести
-xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
-  -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
-
-# Один тест (Swift Testing: Таргет/Структура/функція() — з дужками)
+# Модульні тести (швидкі — після кожної зміни)
 xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
   -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO \
-  -only-testing:'SwitcherTests/SwitcherTests/appModuleLoads()'
+  -collect-test-diagnostics never -only-testing:SwitcherTests
+
+# Один модульний тест (Swift Testing: Таргет/Структура/функція() — з дужками)
+xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
+  -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO \
+  -collect-test-diagnostics never -only-testing:'SwitcherTests/SwitcherTests/appModuleLoads()'
+
+# Екранні тести (повільні — після змін в інтерфейсі й перед злиттям гілки)
+xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
+  -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO \
+  -collect-test-diagnostics never -only-testing:SwitcherUITests
+
+# Один екранний тест (XCTest: Таргет/Клас/метод — без дужок)
+xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
+  -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO \
+  -collect-test-diagnostics never -only-testing:SwitcherUITests/AppLaunchUITests/testAppLaunches
 
 # Перевірка конфігу permissions/sandbox і захисту секретів (після змін у .claude/settings.json або .gitignore)
 bash scripts/sandbox-leak.test.sh
@@ -47,11 +59,16 @@ bash scripts/sandbox-leak.test.sh
 
 Пісочниця Bash блокує служби симулятора (CoreSimulatorService), тому `xcodebuild test` і `xcrun simctl` треба запускати поза нею — інакше падіння з «Connection refused» / «Operation not permitted», і це не помилка в коді.
 
+Без `-collect-test-diagnostics never` xcodebuild після падіння тесту ще близько 10 хвилин збирає діагностику симулятора і здається завислим.
+
+Якщо екранні тести падають з «Failed to prepare device … for impending launch» ще до запуску застосунку — це збій стану симулятора: `xcrun simctl shutdown "iPhone 17" && xcrun simctl boot "iPhone 17"` і запустити знову.
+
 ## Домовленості
 
 - Тексти інтерфейсу — українською.
 - Модель SwiftData тримати сумісною з CloudKit: усі поля зі значеннями за замовчуванням, без унікальних обмежень, зв'язки необов'язкові.
 - `git push` — лише після підтвердження користувача.
+- Модульні тести — на Swift Testing. Екранні тести — на XCTest (`XCTestCase`, методи `test…` з `@MainActor`), бо Swift Testing не керує екраном.
 - Класи `@Model` не ізольовані на головному акторі, попри типову ізоляцію: допоміжні типи, які вони викликають, позначати `nonisolated`. Так само `nonisolated` має бути код, який SwiftUI викликає з фонового потоку (наприклад, динамічні кольори в `Theme.swift`) — інакше застосунок падає під час анімацій.
 
 ## Робота з агентами
@@ -65,6 +82,8 @@ bash scripts/sandbox-leak.test.sh
 
 Знахідки `reviewer` виправляє `implementer`. `reviewer` можна запускати й окремо — для додаткової перевірки гілки.
 
-`tester` — перед злиттям гілки або після змін в інтерфейсі: запускає застосунок у симуляторі, робить знімки екрана. Без таргета UI-тестів (XCUITest) він не вміє натискати кнопки, тож перевіряє лише те, що видно без взаємодії.
+Для задач з інтерфейсом `test-author` пише ще й екранні тести в `SwitcherUITests/` на сценарії з натисканнями, а `implementer` проганяє їх разом із модульними.
+
+`tester` — перед злиттям гілки або після змін в інтерфейсі: проганяє екранні тести, запускає застосунок у симуляторі, робить знімки екрана й дивиться на те, що тести не ловлять (вигляд, тексти, темна тема).
 
 Агенти, які збирають проєкт паралельно, мають використовувати різні `-derivedDataPath`.

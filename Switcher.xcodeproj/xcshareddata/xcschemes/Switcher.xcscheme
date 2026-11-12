@@ -39,6 +39,17 @@
                ReferencedContainer = "container:Switcher.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "AA000000000000000000001D"
+               BuildableName = "SwitcherUITests.xctest"
+               BlueprintName = "SwitcherUITests"
+               ReferencedContainer = "container:Switcher.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
