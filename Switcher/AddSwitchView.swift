@@ -9,7 +9,7 @@ struct AddSwitchView: View {
     @State private var icon = SwitchIcon.check
     @State private var tone = SwitchTone.amber
     @State private var previewIsOn = false
-    @FocusState private var isNameFocused: Bool
+    @State private var isNameFocused = false
 
     private var savedName: String {
         SwitchName.forSaving(name)
@@ -41,26 +41,23 @@ struct AddSwitchView: View {
                     .padding(.horizontal, 4)
                 field("Назва") {
                     let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    TextField("Наприклад, «Вимкнула плиту»", text: $name)
-                        .font(.body.weight(.medium))
-                        .accessibilityIdentifier("addSwitchNameField")
-                        .focused($isNameFocused)
-                        .submitLabel(.done)
-                        .onSubmit(save)
-                        .padding(.horizontal, 16)
-                        .frame(height: 56)
-                        .background(Theme.surface, in: shape)
-                        .overlay(shape.strokeBorder(Theme.ink, lineWidth: 2).opacity(isNameFocused ? 1 : 0))
-                        // У повне поле нові символи не вводяться, а вставка лишає перші 30 символів.
-                        // Присвоюємо лише змінений текст, тож повторний виклик нічого не змінює й циклу немає.
-                        .onChange(of: name) { old, new in
-                            let accepted = SwitchName.fieldText(from: old, to: new)
-                            if accepted != new { name = accepted }
-                        }
+                    // У повне поле нові символи не вводяться, а з вставки лишаються перші символи,
+                    // які влазять, — це вирішує делегат поля ще до того, як текст з'явиться.
+                    SwitchNameTextField(
+                        text: $name,
+                        isFocused: $isNameFocused,
+                        placeholder: "Наприклад, «Вимкнула плиту»",
+                        accessibilityIdentifier: "addSwitchNameField",
+                        onSubmit: save
+                    )
+                    .padding(.horizontal, 16)
+                    .frame(height: 56)
+                    .background(Theme.surface, in: shape)
+                    .overlay(shape.strokeBorder(Theme.ink, lineWidth: 2).opacity(isNameFocused ? 1 : 0))
                     Text(SwitchName.counterText(for: name))
                         .font(.footnote.weight(.medium))
                         .monospacedDigit()
-                        .foregroundStyle(Theme.muted)
+                        .foregroundStyle(SwitchName.isOverLimit(name) ? Theme.warning : Theme.muted)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .padding(.horizontal, 4)
                         .accessibilityLabel(SwitchName.counterAccessibilityLabel(for: name))

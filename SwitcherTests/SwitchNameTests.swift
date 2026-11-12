@@ -120,6 +120,63 @@ struct SwitchNameCounterTests {
     }
 }
 
+/// Стара назва, довша за 30 (з часів до межі): її можна лише скорочувати, а лічильник явно
+/// показує перевищення — той самий текст «51 / 30», але виділений (`isOverLimit`) і з поясненням
+/// для VoiceOver, що після змін збережуться лише перші 30 символів (незмінена назва
+/// лишається довгою — див. `doneKeyRightAwayKeepsLegacyLongNameWhole`).
+@MainActor
+struct SwitchNameOverLimitCounterTests {
+    /// Назва, створена до появи межі: 51 символ.
+    private let legacyLongName = "Перевірила, чи вимкнена праска перед виходом з дому"
+
+    // Межа: 30 — ще не перевищення, 31 — уже (зсув межі на ±1 ламає один із випадків).
+    @Test(arguments: [
+        ("", false),
+        ("Полила квіти", false),
+        (letters(29), false),
+        (letters(30), false),
+        (letters(31), true),
+        ("Перевірила, чи вимкнена праска перед виходом з дому", true)
+    ] as [(String, Bool)])
+    func overLimitMeansMoreThanThirtyCharacters(text: String, expected: Bool) {
+        #expect(SwitchName.isOverLimit(text) == expected)
+    }
+
+    // Рахує те саме, що лічильник: символи, які бачить людина, а не UTF-16.
+    @Test(arguments: graphemeClusters)
+    func overLimitCountsGraphemeClustersAsOneCharacter(cluster: String) {
+        #expect(!SwitchName.isOverLimit(String(repeating: cluster, count: 30)))
+        #expect(SwitchName.isOverLimit(String(repeating: cluster, count: 31)))
+    }
+
+    // Пробіли по краях рахуються, як і в лічильнику: 31 символ у полі — перевищення.
+    @Test func overLimitCountsSpacesAtTheEdges() {
+        #expect(SwitchName.isOverLimit(" " + letters(30)))
+    }
+
+    // Видимий текст лічильника не змінюється: перевищення показує виділення, а не інші слова.
+    @Test func counterTextShowsTheActualCountOverTheLimit() {
+        #expect(SwitchName.counterText(for: legacyLongName) == "51 / 30")
+        #expect(SwitchName.counterText(for: letters(31)) == "31 / 30")
+    }
+
+    @Test(arguments: [
+        (letters(31), "Символів: 31 з 30. Після змін буде збережено лише перші 30"),
+        ("Перевірила, чи вимкнена праска перед виходом з дому", "Символів: 51 з 30. Після змін буде збережено лише перші 30")
+    ])
+    func accessibilityLabelOverTheLimitSaysOnlyFirstThirtyWillBeSaved(text: String, expected: String) {
+        #expect(SwitchName.counterAccessibilityLabel(for: text) == expected)
+    }
+
+    @Test(arguments: graphemeClusters)
+    func accessibilityLabelOverTheLimitCountsGraphemeClusters(cluster: String) {
+        #expect(
+            SwitchName.counterAccessibilityLabel(for: String(repeating: cluster, count: 31))
+                == "Символів: 31 з 30. Після змін буде збережено лише перші 30"
+        )
+    }
+}
+
 /// Вимога 5: назва, яка потрапляє в `SwitchItem`, — без пробілів і переносів по краях
 /// і не довша за 30 символів.
 @MainActor

@@ -25,6 +25,7 @@ struct TonePicker: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(tone.title)
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
+                .accessibilityIdentifier("toneOption_\(tone.rawValue)")
             }
         }
         .sensoryFeedback(.selection, trigger: selection)

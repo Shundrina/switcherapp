@@ -24,6 +24,8 @@ enum AccessibilityID {
     static let switchNameEditCounter = "switchNameEditCounter"
     static let historyEmptyText = "historyEmptyText"
     static let historyEvent = "historyEvent"
+    // Вибір кольору (TonePicker): кнопка кольору `tone` — `"toneOption_" + SwitchTone.rawValue`.
+    static func toneOption(_ tone: String) -> String { "toneOption_\(tone)" }
 }
 
 /// Скільки чекати на появу елемента: з урахуванням анімацій і повільного симулятора.
@@ -49,6 +51,25 @@ extension XCUIApplication {
         buttons[AccessibilityID.addSwitchButton]
     }
 
+    /// Поле «Назва» на екрані додавання — однорядковий `UITextField`.
+    @MainActor
+    var addSwitchNameField: XCUIElement {
+        textFields[AccessibilityID.addSwitchNameField]
+    }
+
+    /// Поле редагування назви на екрані перемикача — багаторядковий `UITextView`.
+    @MainActor
+    var switchNameEditField: XCUIElement {
+        textViews[AccessibilityID.switchNameEditField]
+    }
+
+    /// Прокрутка екрана перемикача. Шукається в головному вікні: `app.scrollViews.firstMatch`
+    /// при відкритій клавіатурі знаходить смугу підказок над нею (теж `ScrollView`, у вікні клавіатури).
+    @MainActor
+    var switchScreenScrollView: XCUIElement {
+        windows.element(boundBy: 0).scrollViews.firstMatch
+    }
+
     /// Рядок списку, у якому є елемент з назвою `name` (назву задає сам тест, тож вона стабільна).
     @MainActor
     func row(named name: String) -> XCUIElement {
@@ -62,7 +83,7 @@ extension XCUIApplication {
         XCTAssertTrue(addSwitchButton.waitForExistence(timeout: uiTimeout), "Немає кнопки додавання в списку", file: file, line: line)
         addSwitchButton.tap()
 
-        let field = textFields[AccessibilityID.addSwitchNameField]
+        let field = addSwitchNameField
         XCTAssertTrue(field.waitForExistence(timeout: uiTimeout), "Немає поля назви на екрані додавання", file: file, line: line)
         field.tap()
         field.typeText(name)
@@ -129,6 +150,13 @@ extension XCTestCase {
     @MainActor
     func waitForValue(_ expected: String, of element: XCUIElement, timeout: TimeInterval = uiTimeout) -> Bool {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", expected), object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    /// Чекає, поки мітка елемента (`label`) стане `expected`.
+    @MainActor
+    func waitForLabel(_ expected: String, of element: XCUIElement, timeout: TimeInterval = uiTimeout) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", expected), object: element)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
 }

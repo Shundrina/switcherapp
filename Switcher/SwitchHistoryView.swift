@@ -8,7 +8,7 @@ struct SwitchHistoryView: View {
     @State private var isEditingName = false
     /// Текст поля назви; зберігається в `item` лише після завершення редагування.
     @State private var draft = ""
-    @FocusState private var isNameFocused: Bool
+    @State private var isNameFocused = false
 
     var body: some View {
         ScrollView {
@@ -104,38 +104,35 @@ struct SwitchHistoryView: View {
     private var nameField: some View {
         VStack(alignment: .leading, spacing: 4) {
             // Багаторядкове поле, щоб довга назва переносилася так само, як у режимі перегляду.
-            TextField(
-                "Назва",
+            // Те саме обмеження, що й у формі додавання. «Готово» вставляє перенос рядка — тоді
+            // текст не змінюється й редагування завершується; переноси з вставки стають пробілами.
+            SwitchNameTextView(
                 text: $draft,
-                prompt: Text("Назва перемикача").foregroundStyle(item.isOn ? Theme.onTone.opacity(0.6) : Theme.muted),
-                axis: .vertical
+                isFocused: $isNameFocused,
+                placeholder: "Назва перемикача",
+                textColor: item.isOn ? Theme.onTone : Theme.ink,
+                placeholderColor: item.isOn ? Theme.onTone.opacity(0.6) : Theme.muted,
+                accessibilityIdentifier: "switchNameEditField",
+                onFinish: finishNameEditing
             )
-            .font(.title.bold())
-            .foregroundStyle(item.isOn ? Theme.onTone : Theme.ink)
-            .tint(item.isOn ? Theme.onTone : Theme.ink)
-            .accessibilityIdentifier("switchNameEditField")
-            .focused($isNameFocused)
-            .submitLabel(.done)
-            .onSubmit(finishNameEditing)
-            .onChange(of: draft) { old, new in
-                // Те саме обмеження, що й у формі додавання. У багаторядковому полі «Готово» вставляє
-                // перенос рядка — тоді текст не змінюється й редагування завершується; переноси
-                // з вставки чи диктування стають пробілами (див. `SwitchName.fieldEdit`).
-                let edit = SwitchName.fieldEdit(from: old, to: new)
-                if edit.text != new { draft = edit.text }
-                // Після присвоєння: `finishNameEditing` зберігає `draft`.
-                if edit.finishesEditing { finishNameEditing() }
-            }
             .onAppear { isNameFocused = true }
+            // Стара назва понад межу: лічильник виділено — «Готово» збереже лише перші 30 символів.
             Text(SwitchName.counterText(for: draft))
                 .font(.footnote.weight(.medium))
                 .monospacedDigit()
-                .foregroundStyle(item.isOn ? Theme.onTone.opacity(0.8) : Theme.muted)
+                .foregroundStyle(counterColor)
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .accessibilityLabel(SwitchName.counterAccessibilityLabel(for: draft))
                 .accessibilityIdentifier("switchNameEditCounter")
                 .modifier(EndsEditingOnTap(isEnabled: isEditingName, action: finishNameEditing))
         }
+    }
+
+    private var counterColor: Color {
+        if SwitchName.isOverLimit(draft) {
+            return item.isOn ? Theme.warningOnTone : Theme.warning
+        }
+        return item.isOn ? Theme.onTone.opacity(0.8) : Theme.muted
     }
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
