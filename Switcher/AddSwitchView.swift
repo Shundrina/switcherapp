@@ -80,8 +80,9 @@ struct AddSwitchView: View {
         .presentationBackground(Theme.background)
         .presentationDragIndicator(.visible)
         .task {
-            // Картка-зразок сама вмикається й вимикається, щоб показати обидва стани.
-            guard !reduceMotion else { return }
+            // Картка-зразок сама вмикається й вимикається, щоб показати обидва стани
+            // (крім Reduce Motion і тестового режиму запуску — див. `LaunchOptions.animatesAddPreview`).
+            guard !reduceMotion, LaunchOptions.current.animatesAddPreview else { return }
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1.6))
                 previewIsOn.toggle()
@@ -95,7 +96,6 @@ struct AddSwitchView: View {
                 name: savedName.isEmpty ? "Назва перемикача" : savedName,
                 status: "Ще не перемикали",
                 icon: icon,
-                tone: tone,
                 isOn: previewIsOn
             )
             LampSwitch(isOn: previewIsOn)

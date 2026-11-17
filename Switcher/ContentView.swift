@@ -159,7 +159,7 @@ private struct SwitchRow: View {
     var body: some View {
         HStack(spacing: 14) {
             Button(action: onOpen) {
-                SwitchCardLabel(name: item.name, status: item.statusText(now: now), icon: item.icon, tone: item.tone, isOn: item.isOn)
+                SwitchCardLabel(name: item.name, status: item.statusText(now: now), icon: item.icon, isOn: item.isOn)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

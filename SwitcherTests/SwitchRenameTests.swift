@@ -125,7 +125,8 @@ struct SwitchItemRenameTests {
             TestClock.date(day: 9, hour: 12, minute: 45),
             TestClock.date(day: 10, hour: 23, minute: 59)
         ]
-        let item = SwitchItem(name: "Газ горить", icon: .flame, tone: .coral, createdAt: createdAt)
+        let flame = try #require(SwitchIcon(rawValue: "🔥"))
+        let item = SwitchItem(name: "Газ горить", icon: flame, tone: .coral, createdAt: createdAt)
         context.insert(item)
         for (index, date) in toggles.enumerated() {
             item.setOn(index.isMultiple(of: 2), at: date)
@@ -138,7 +139,7 @@ struct SwitchItemRenameTests {
             #expect(item.name == "Плита вимкнена")
             #expect(item.isOn)
             #expect(item.lastToggledAt == toggles[2])
-            #expect(item.icon == .flame)
+            #expect(item.icon == flame)
             #expect(item.tone == .coral)
             #expect(item.createdAt == createdAt)
             let events = try context.fetch(FetchDescriptor<SwitchEvent>(sortBy: [SortDescriptor(\.timestamp)]))

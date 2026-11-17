@@ -92,16 +92,18 @@ struct SwitchItemTests {
         #expect(item.tone == .amber)
     }
 
-    @Test func iconAndToneAreStoredAsRawValues() {
-        let item = SwitchItem(name: "Газ горить", icon: .flame, tone: .coral)
+    @Test func iconAndToneAreStoredAsRawValues() throws {
+        let flame = try #require(SwitchIcon(rawValue: "🔥"))
+        let lock = try #require(SwitchIcon(rawValue: "🔒"))
+        let item = SwitchItem(name: "Газ горить", icon: flame, tone: .coral)
         context.insert(item)
-        #expect(item.iconRaw == "flame")
+        #expect(item.iconRaw == "🔥")
         #expect(item.toneRaw == "coral")
 
-        item.icon = .lock
+        item.icon = lock
         item.tone = .sky
 
-        #expect(item.iconRaw == "lock")
+        #expect(item.iconRaw == "🔒")
         #expect(item.toneRaw == "sky")
     }
 

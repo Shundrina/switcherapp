@@ -7,7 +7,7 @@ final class SwitchItem {
     var isOn: Bool = false
     var createdAt: Date = Date.now
     var lastToggledAt: Date?
-    var iconRaw: String = "check"
+    var iconRaw: String = "\u{2714}\u{FE0F}"
     var toneRaw: String = "amber"
 
     @Relationship(deleteRule: .cascade, inverse: \SwitchEvent.item)
@@ -20,9 +20,10 @@ final class SwitchItem {
         self.createdAt = createdAt
     }
 
-    /// Значок перемикача; невідоме збережене значення читається як «позначка».
+    /// Значок перемикача. Попередня версія зберігала назви SF Symbols — вони читаються як відповідні
+    /// емодзі; невідоме збережене значення читається як ✔️.
     var icon: SwitchIcon {
-        get { SwitchIcon(rawValue: iconRaw) ?? .check }
+        get { SwitchIcon(rawValue: iconRaw) ?? SwitchIcon(legacyName: iconRaw) ?? .check }
         set { iconRaw = newValue.rawValue }
     }
 

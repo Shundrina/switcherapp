@@ -5,26 +5,14 @@ import UIKit
 
 @MainActor
 struct SwitchAppearanceTests {
-    // Значок і колір зберігаються в SwiftData як рядки (`iconRaw`, `toneRaw`).
-    // Якщо case перейменувати чи видалити, старі записи мовчки прочитаються як
-    // значення за замовчуванням (`.check` / `.amber`), і користувач втратить вибір.
-    // Тест фіксує поточні сирі значення: міняти списки можна лише разом з міграцією даних.
-    @Test func iconRawValuesAreStable() {
-        #expect(SwitchIcon.allCases.map(\.rawValue) == [
-            "drop", "flame", "lock", "pill", "power", "bell", "clock", "check"
-        ])
-    }
-
-    // Див. коментар до `iconRawValuesAreStable`.
+    // Колір зберігається в SwiftData як рядок (`toneRaw`). Якщо case перейменувати чи видалити,
+    // старі записи мовчки прочитаються як бурштиновий, і користувач втратить вибір.
+    // Тест фіксує поточні сирі значення: міняти список можна лише разом з міграцією даних.
+    // Значки (емодзі, читання старих значень `iconRaw`) — у `SwitchIconTests.swift`.
     @Test func toneRawValuesAreStable() {
         #expect(SwitchTone.allCases.map(\.rawValue) == [
             "amber", "coral", "mint", "sky", "lilac", "pink"
         ])
-    }
-
-    @Test(arguments: SwitchIcon.allCases)
-    func iconRoundTripsThroughRawValue(icon: SwitchIcon) {
-        #expect(SwitchIcon(rawValue: icon.rawValue) == icon)
     }
 
     @Test(arguments: SwitchTone.allCases)
@@ -33,13 +21,7 @@ struct SwitchAppearanceTests {
     }
 
     @Test func rawValuesAreUnique() {
-        #expect(Set(SwitchIcon.allCases.map(\.rawValue)).count == SwitchIcon.allCases.count)
         #expect(Set(SwitchTone.allCases.map(\.rawValue)).count == SwitchTone.allCases.count)
-    }
-
-    @Test(arguments: SwitchIcon.allCases)
-    func iconSymbolExistsInSFSymbols(icon: SwitchIcon) {
-        #expect(UIImage(systemName: icon.symbolName) != nil, "Немає SF Symbol «\(icon.symbolName)»")
     }
 }
 

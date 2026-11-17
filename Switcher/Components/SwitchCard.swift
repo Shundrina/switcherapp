@@ -22,21 +22,19 @@ struct FloodBackground: View {
     }
 }
 
-/// Значок перемикача в кружечку.
+/// Значок-емодзі перемикача в кружечку.
 struct IconBubble: View {
     let icon: SwitchIcon
-    let tone: SwitchTone
     let isOn: Bool
     var size: CGFloat = 48
 
     var body: some View {
-        Image(systemName: icon.symbolName)
-            .font(.system(size: size * 0.44, weight: .semibold))
-            .foregroundStyle(isOn ? tone.color : Theme.muted)
-            .symbolEffect(.bounce, value: isOn)
+        Text(icon.rawValue)
+            .font(.system(size: size * 0.5))
             .frame(width: size, height: size)
-            .background(isOn ? Theme.onTone : Theme.bubble, in: Circle())
+            .background(isOn ? Theme.bubbleOnTone : Theme.bubble, in: Circle())
             .animation(.easeInOut(duration: 0.3), value: isOn)
+            .accessibilityLabel(icon.title)
     }
 }
 
@@ -45,12 +43,11 @@ struct SwitchCardLabel: View {
     let name: String
     let status: String
     let icon: SwitchIcon
-    let tone: SwitchTone
     let isOn: Bool
 
     var body: some View {
         HStack(spacing: 14) {
-            IconBubble(icon: icon, tone: tone, isOn: isOn)
+            IconBubble(icon: icon, isOn: isOn)
             VStack(alignment: .leading, spacing: 3) {
                 Text(name)
                     .font(.headline)

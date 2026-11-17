@@ -51,7 +51,7 @@ struct SwitchHistoryView: View {
     private var hero: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                IconBubble(icon: item.icon, tone: item.tone, isOn: item.isOn, size: 56)
+                IconBubble(icon: item.icon, isOn: item.isOn, size: 56)
                 Spacer()
                 Toggle(item.name, isOn: Binding(
                     get: { item.isOn },

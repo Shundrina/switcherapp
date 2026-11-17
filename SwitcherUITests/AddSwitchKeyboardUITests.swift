@@ -61,7 +61,7 @@ final class AddSwitchKeyboardUITests: XCTestCase {
         XCTAssertFalse(app.row(named: name).exists, "Перемикач «\(name)» створився, хоча «Додати» не натискали")
     }
 
-    /// Ввели назву, «Готово» → екран лишився → обрали колір «Корал» і значок «Вогонь» →
+    /// Ввели назву, «Готово» → екран лишився → обрали колір «Корал» і значок 🔥 →
     /// «Додати» → рядок у списку, а на екрані перемикача обрано саме ці колір і значок.
     @MainActor
     func testSwitchIsCreatedByAddButtonAfterChoosingColorAndIcon() throws {
@@ -72,11 +72,11 @@ final class AddSwitchKeyboardUITests: XCTestCase {
         typeName(name, into: field, in: app)
         pressDone(on: field, in: app, step: "«Готово»")
 
-        // За замовчуванням — бурштиновий колір і «Позначка»; «Корал» і «Вогонь» — інші.
+        // За замовчуванням — бурштиновий колір і ✔️ (див. IconPickerUITests); «Корал» і 🔥 — інші.
         let coral = app.buttons[AccessibilityID.toneOption("coral")]
-        let flame = app.buttons[AccessibilityID.iconOption("flame")]
+        let flame = app.buttons[AccessibilityID.iconOption("🔥")]
         choose(coral, what: "колір «Корал»")
-        choose(flame, what: "значок «Вогонь»")
+        choose(flame, what: "значок 🔥")
 
         let save = app.buttons[AccessibilityID.addSwitchSaveButton]
         XCTAssertTrue(save.waitForExistence(timeout: uiTimeout), "Немає кнопки «Додати»")
@@ -86,7 +86,7 @@ final class AddSwitchKeyboardUITests: XCTestCase {
 
         app.openSwitch(named: name)
         XCTAssertTrue(waitForSelected(coral), "На екрані перемикача не обрано колір «Корал»")
-        XCTAssertTrue(waitForSelected(flame), "На екрані перемикача не обрано значок «Вогонь»")
+        XCTAssertTrue(waitForSelected(flame), "На екрані перемикача не обрано значок 🔥")
     }
 
     // MARK: - Допоміжне
@@ -133,12 +133,6 @@ final class AddSwitchKeyboardUITests: XCTestCase {
         XCTAssertFalse(option.isSelected, "\(what) уже обрано — тест не перевірить вибір", file: file, line: line)
         option.tap()
         XCTAssertTrue(waitForSelected(option), "Натискання не обрало \(what)", file: file, line: line)
-    }
-
-    @MainActor
-    private func waitForSelected(_ element: XCUIElement) -> Bool {
-        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "selected == true"), object: element)
-        return XCTWaiter().wait(for: [expectation], timeout: uiTimeout) == .completed
     }
 
     /// Чи має елемент фокус клавіатури (атрибут XCUITest `hasKeyboardFocus`).

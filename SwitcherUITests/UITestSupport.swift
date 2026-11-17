@@ -27,8 +27,14 @@ enum AccessibilityID {
     static let historyEvent = "historyEvent"
     // Вибір кольору (TonePicker): кнопка кольору `tone` — `"toneOption_" + SwitchTone.rawValue`.
     static func toneOption(_ tone: String) -> String { "toneOption_\(tone)" }
-    // Вибір значка (IconPicker): кнопка значка `icon` — `"iconOption_" + SwitchIcon.rawValue`.
-    static func iconOption(_ icon: String) -> String { "iconOption_\(icon)" }
+    // Вибір значка (IconPicker, сітка 4×2 на екранах додавання й перемикача): комірка, у якій
+    // показано емодзі `emoji`, — `"iconOption_" + емодзі` (SwitchIcon.rawValue, з U+FE0F, де він є).
+    // Це й сім основних, і восьма комірка, коли в ній показано вибраний значок не з основних.
+    static func iconOption(_ emoji: String) -> String { "iconOption_\(emoji)" }
+    // Восьма комірка, поки в ній «…» (відкриває «Усі значки»).
+    static let iconOptionMore = "iconOptionMore"
+    // Екран «Усі значки»: кнопка емодзі `emoji` — `"allIconsOption_" + емодзі`.
+    static func allIconsOption(_ emoji: String) -> String { "allIconsOption_\(emoji)" }
 }
 
 /// Скільки чекати на появу елемента: з урахуванням анімацій і повільного симулятора.
@@ -162,6 +168,13 @@ extension XCTestCase {
     func stays(_ element: XCUIElement, withoutBecoming format: String, for duration: TimeInterval) -> Bool {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: format), object: element)
         return XCTWaiter().wait(for: [expectation], timeout: duration) == .timedOut
+    }
+
+    /// Чекає, поки елемент стане обраним (риса доступності `isSelected`).
+    @MainActor
+    func waitForSelected(_ element: XCUIElement, timeout: TimeInterval = uiTimeout) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "selected == true"), object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
 
     /// Чекає, поки мітка елемента (`label`) стане `expected`.
