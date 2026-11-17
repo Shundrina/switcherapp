@@ -8,7 +8,7 @@ struct AddSwitchView: View {
     @State private var name = ""
     @State private var icon = SwitchIcon.check
     @State private var tone = SwitchTone.amber
-    @State private var previewIsOn = false
+    @State private var previewIsOn = LaunchOptions.current.addPreview.startsOn
     @State private var isNameFocused = false
 
     private var savedName: String {
@@ -81,8 +81,8 @@ struct AddSwitchView: View {
         .presentationDragIndicator(.visible)
         .task {
             // Картка-зразок сама вмикається й вимикається, щоб показати обидва стани
-            // (крім Reduce Motion і тестового режиму запуску — див. `LaunchOptions.animatesAddPreview`).
-            guard !reduceMotion, LaunchOptions.current.animatesAddPreview else { return }
+            // (крім Reduce Motion; у тестовому режимі запуску стоїть увімкненою — див. `LaunchOptions.AddPreview`).
+            guard LaunchOptions.current.addPreview.togglesItself(reduceMotion: reduceMotion) else { return }
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1.6))
                 previewIsOn.toggle()

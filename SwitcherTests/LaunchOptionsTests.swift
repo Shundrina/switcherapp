@@ -193,3 +193,71 @@ struct OnboardingScreenTests {
         }
     }
 }
+
+/// Картка-зразок «Вигляд у списку» на екрані додавання (`LaunchOptions.addPreview`).
+/// Звичайний запуск — картка сама вмикається й вимикається (крім Reduce Motion), як і раніше.
+/// Тестовий режим (`-UITesting`) — картка не перемикається сама й стоїть увімкненою: це найгірший
+/// для натискань стан (кольорове тло розтікається колом), тож екранні тести ловлять натискання,
+/// які перехоплює картка, детерміновано, а не через раз.
+@MainActor
+struct AddPreviewLaunchModeTests {
+    private let executable = "/private/var/containers/Bundle/Application/X/Switcher.app/Switcher"
+
+    // MARK: Зв'язок з аргументами запуску
+
+    @Test func normalLaunchAutoTogglesAddPreview() {
+        #expect(LaunchOptions(arguments: [executable]).addPreview == .autoToggling)
+    }
+
+    @Test func emptyArgumentsAutoToggleAddPreview() {
+        #expect(LaunchOptions(arguments: []).addPreview == .autoToggling)
+    }
+
+    @Test func uiTestingKeepsAddPreviewOn() {
+        #expect(LaunchOptions(arguments: [executable, "-UITesting"]).addPreview == .alwaysOn)
+    }
+
+    @Test func uiTestingWithShowOnboardingKeepsAddPreviewOn() {
+        #expect(LaunchOptions(arguments: [executable, "-UITesting", "-UITestingShowOnboarding"]).addPreview == .alwaysOn)
+        #expect(LaunchOptions(arguments: [executable, "-UITestingShowOnboarding", "-UITesting"]).addPreview == .alwaysOn)
+    }
+
+    // Аргументи Xcode і системи на режим картки не впливають.
+    @Test func unrelatedArgumentsAreIgnored() {
+        let normal = LaunchOptions(arguments: [executable, "-AppleLanguages", "(uk)", "-NSDoubleLocalizedStrings", "YES"])
+        #expect(normal.addPreview == .autoToggling)
+
+        let testing = LaunchOptions(arguments: [executable, "-AppleLanguages", "(uk)", "-UITesting"])
+        #expect(testing.addPreview == .alwaysOn)
+    }
+
+    // Без `-UITesting` — звичайний запуск, навіть із прапорцем онбордингу чи схожими рядками.
+    @Test(arguments: ["-UITestingShowOnboarding", "UITesting", "-UITestingFoo"])
+    func withoutExactUITestingArgumentAddPreviewAutoToggles(argument: String) {
+        #expect(LaunchOptions(arguments: [executable, argument]).addPreview == .autoToggling)
+    }
+
+    // MARK: Поведінка картки
+
+    // Звичайний запуск: як і раніше, картка відкривається вимкненою й далі перемикається сама.
+    @Test func autoTogglingStartsOffAndTogglesItself() {
+        let mode = LaunchOptions.AddPreview.autoToggling
+
+        #expect(mode.startsOn == false)
+        #expect(mode.togglesItself(reduceMotion: false) == true)
+    }
+
+    // З Reduce Motion картка сама не перемикається.
+    @Test func autoTogglingRespectsReduceMotion() {
+        #expect(LaunchOptions.AddPreview.autoToggling.togglesItself(reduceMotion: true) == false)
+    }
+
+    // Тестовий режим: картка увімкнена з самого відкриття екрана й не вимикається — незалежно від Reduce Motion.
+    @Test(arguments: [false, true])
+    func alwaysOnStartsOnAndNeverToggles(reduceMotion: Bool) {
+        let mode = LaunchOptions.AddPreview.alwaysOn
+
+        #expect(mode.startsOn == true)
+        #expect(mode.togglesItself(reduceMotion: reduceMotion) == false)
+    }
+}

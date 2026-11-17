@@ -66,7 +66,11 @@ struct SwitchCardLabel: View {
 extension View {
     /// Обгортає вміст у картку перемикача з кольоровим тлом.
     func switchCard(isOn: Bool, tone: SwitchTone, cornerRadius: CGFloat = 24, origin: UnitPoint = UnitPoint(x: 0.88, y: 0.5)) -> some View {
-        background(FloodBackground(isOn: isOn, color: tone.color, origin: origin))
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        // `clipShape` обрізає лише малювання: коло тла, що розтікається далеко за картку, і далі
+        // перехоплювало б натискання на сусідні елементи. Зону натискання обмежує `contentShape`.
+        return background(FloodBackground(isOn: isOn, color: tone.color, origin: origin))
+            .clipShape(shape)
+            .contentShape(shape)
     }
 }

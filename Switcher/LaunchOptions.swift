@@ -13,15 +13,22 @@ nonisolated struct LaunchOptions: Equatable {
         case shown
     }
 
+    /// Як поводиться картка-зразок «Вигляд у списку» на екрані додавання.
+    enum AddPreview: Equatable {
+        /// Відкривається вимкненою й далі сама вмикається й вимикається (крім Reduce Motion).
+        case autoToggling
+        /// Увімкнена весь час. Так кольорове тло розтікається за межі картки — найгірший для
+        /// натискань стан, — і екранні тести ловлять натискання, які перехоплює картка, щоразу.
+        case alwaysOn
+    }
+
     static let uiTestingArgument = "-UITesting"
     static let showOnboardingArgument = "-UITestingShowOnboarding"
 
     /// Сховище лише в пам'яті: порожнє на кожному запуску, дані користувача не зачіпає.
     let isStoredInMemoryOnly: Bool
     let onboarding: Onboarding
-    /// Картка-зразок на екрані додавання сама вмикається й вимикається. У тестовому режимі — ні:
-    /// натискання в сітках вибору, що припадали на цю анімацію, зрідка губилися в екранних тестах.
-    let animatesAddPreview: Bool
+    let addPreview: AddPreview
 
     /// `arguments` — як у `ProcessInfo.processInfo.arguments`: перший елемент — шлях до програми.
     /// Аргументи порівнюються повністю, тож схожі рядки тестовий режим не вмикають.
@@ -30,11 +37,11 @@ nonisolated struct LaunchOptions: Equatable {
         guard flags.contains(Self.uiTestingArgument) else {
             isStoredInMemoryOnly = false
             onboarding = .stored
-            animatesAddPreview = true
+            addPreview = .autoToggling
             return
         }
         isStoredInMemoryOnly = true
-        animatesAddPreview = false
+        addPreview = .alwaysOn
         onboarding = flags.contains(Self.showOnboardingArgument) ? .shown : .skipped
     }
 
@@ -58,5 +65,20 @@ nonisolated extension LaunchOptions.Onboarding {
     /// Чи записувати завершення онбордингу в збережений прапорець — лише у звичайному запуску.
     var persistsCompletion: Bool {
         self == .stored
+    }
+}
+
+nonisolated extension LaunchOptions.AddPreview {
+    /// Чи картка увімкнена з самого відкриття екрана.
+    var startsOn: Bool {
+        self == .alwaysOn
+    }
+
+    /// Чи картка сама вмикається й вимикається.
+    func togglesItself(reduceMotion: Bool) -> Bool {
+        switch self {
+        case .autoToggling: !reduceMotion
+        case .alwaysOn: false
+        }
     }
 }
