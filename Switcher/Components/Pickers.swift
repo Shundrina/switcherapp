@@ -59,6 +59,7 @@ struct IconPicker: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(icon.title)
                 .accessibilityAddTraits(isSelected ? .isSelected : [])
+                .accessibilityIdentifier("iconOption_\(icon.rawValue)")
             }
         }
         .sensoryFeedback(.selection, trigger: selection)

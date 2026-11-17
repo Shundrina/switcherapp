@@ -22,6 +22,7 @@ struct AddSwitchView: View {
                     Button("Скасувати") { dismiss() }
                         .font(.body.weight(.medium))
                         .frame(minHeight: 44)
+                        .accessibilityIdentifier("addSwitchCancelButton")
                     Spacer()
                     Button(action: save) {
                         Text("Додати")
@@ -47,8 +48,7 @@ struct AddSwitchView: View {
                         text: $name,
                         isFocused: $isNameFocused,
                         placeholder: "Наприклад, «Вимкнула плиту»",
-                        accessibilityIdentifier: "addSwitchNameField",
-                        onSubmit: save
+                        accessibilityIdentifier: "addSwitchNameField"
                     )
                     .padding(.horizontal, 16)
                     .frame(height: 56)
@@ -79,7 +79,6 @@ struct AddSwitchView: View {
         .tint(Theme.ink)
         .presentationBackground(Theme.background)
         .presentationDragIndicator(.visible)
-        .onAppear { isNameFocused = true }
         .task {
             // Картка-зразок сама вмикається й вимикається, щоб показати обидва стани.
             guard !reduceMotion else { return }

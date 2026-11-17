@@ -11,14 +11,13 @@ import UIKit
 // приймаються як є, а прив'язка не оновлюється; щойно складання завершилося, межу застосовує
 // `SwitchName.edit(from:to:)` до різниці між останнім прийнятим текстом і тим, що в полі.
 
-/// Однорядкове поле «Назва» на екрані додавання. «Готово» на клавіатурі викликає `onSubmit`
-/// і ховає клавіатуру; переноси рядка з вставки стають пробілами.
+/// Однорядкове поле «Назва» на екрані додавання. «Готово» на клавіатурі лише ховає клавіатуру
+/// (перемикач створює кнопка «Додати»); переноси рядка з вставки стають пробілами.
 struct SwitchNameTextField: UIViewRepresentable {
     @Binding var text: String
     @Binding var isFocused: Bool
     let placeholder: String
     let accessibilityIdentifier: String
-    let onSubmit: () -> Void
 
     func makeUIView(context: Context) -> NameTextField {
         let field = NameTextField()
@@ -83,7 +82,6 @@ struct SwitchNameTextField: UIViewRepresentable {
         }
 
         func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-            parent.onSubmit()
             textField.resignFirstResponder()
             return false
         }

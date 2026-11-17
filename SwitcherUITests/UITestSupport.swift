@@ -18,6 +18,7 @@ enum AccessibilityID {
     static let addSwitchNameField = "addSwitchNameField"
     static let addSwitchNameCounter = "addSwitchNameCounter"
     static let addSwitchSaveButton = "addSwitchSaveButton"
+    static let addSwitchCancelButton = "addSwitchCancelButton"
     // Екран перемикача (SwitchHistoryView)
     static let switchNameButton = "switchNameButton"
     static let switchNameEditField = "switchNameEditField"
@@ -26,6 +27,8 @@ enum AccessibilityID {
     static let historyEvent = "historyEvent"
     // Вибір кольору (TonePicker): кнопка кольору `tone` — `"toneOption_" + SwitchTone.rawValue`.
     static func toneOption(_ tone: String) -> String { "toneOption_\(tone)" }
+    // Вибір значка (IconPicker): кнопка значка `icon` — `"iconOption_" + SwitchIcon.rawValue`.
+    static func iconOption(_ icon: String) -> String { "iconOption_\(icon)" }
 }
 
 /// Скільки чекати на появу елемента: з урахуванням анімацій і повільного симулятора.
@@ -151,6 +154,14 @@ extension XCTestCase {
     func waitForValue(_ expected: String, of element: XCUIElement, timeout: TimeInterval = uiTimeout) -> Bool {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", expected), object: element)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    /// Перевіряє, що умова `format` для елемента НЕ стала істинною за `duration` секунд
+    /// (наприклад, клавіатура не з'явилася, екран не закрився). Повертає `true`, якщо так і було.
+    @MainActor
+    func stays(_ element: XCUIElement, withoutBecoming format: String, for duration: TimeInterval) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: format), object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: duration) == .timedOut
     }
 
     /// Чекає, поки мітка елемента (`label`) стане `expected`.
