@@ -11,6 +11,7 @@ struct ContentView: View {
     /// Заголовок підтвердження. Запам'ятовується під час свайпу: поки вікно зникає, перемикача вже може не бути.
     @State private var deletionTitle = ""
     @Environment(\.now) private var now
+    @Environment(ReminderService.self) private var reminders: ReminderService?
 
     private var onCount: Int {
         items.filter(\.isOn).count
@@ -37,9 +38,11 @@ struct ContentView: View {
             }
             .alert(deletionTitle, isPresented: isConfirmingDeletion, presenting: itemPendingDeletion) { item in
                 Button(SwitchDeletion.confirmButtonTitle, role: .destructive) {
+                    let switchID = item.uuid
                     withAnimation {
                         SwitchDeletion.delete(item, from: modelContext)
                     }
+                    Task { await reminders?.didDelete(switchID: switchID) }
                 }
                 Button(SwitchDeletion.cancelButtonTitle, role: .cancel) {}
             } message: { _ in
@@ -155,6 +158,7 @@ private struct SwitchRow: View {
     let item: SwitchItem
     let onOpen: () -> Void
     @Environment(\.now) private var now
+    @Environment(ReminderService.self) private var reminders: ReminderService?
 
     var body: some View {
         HStack(spacing: 14) {
@@ -168,7 +172,10 @@ private struct SwitchRow: View {
 
             Toggle(item.name, isOn: Binding(
                 get: { item.isOn },
-                set: { item.setOn($0) }
+                set: { isOn in
+                    item.setOn(isOn)
+                    Task { await reminders?.didToggle(item) }
+                }
             ))
             .labelsHidden()
             .toggleStyle(LampToggleStyle())

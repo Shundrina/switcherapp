@@ -22,13 +22,26 @@ nonisolated struct LaunchOptions: Equatable {
         case alwaysOn
     }
 
+    /// Звідки сповіщення й дозвіл на них.
+    enum Notifications: Equatable {
+        /// Справжній центр сповіщень і системний дозвіл.
+        case system
+        /// Центр у пам'яті й дозвіл `permission` без системного вікна (див. `InMemoryNotificationCenter`).
+        case inMemory(permission: NotificationPermission)
+    }
+
     static let uiTestingArgument = "-UITesting"
     static let showOnboardingArgument = "-UITestingShowOnboarding"
+    /// Разом з `-UITesting`: дозвіл на сповіщення відмовлено.
+    static let notificationsDeniedArgument = "-UITestingNotificationsDenied"
+    /// Разом з `-UITesting`: дозвіл на сповіщення надано (так і за замовчуванням у тестовому режимі).
+    static let notificationsAllowedArgument = "-UITestingNotificationsAllowed"
 
     /// Сховище лише в пам'яті: порожнє на кожному запуску, дані користувача не зачіпає.
     let isStoredInMemoryOnly: Bool
     let onboarding: Onboarding
     let addPreview: AddPreview
+    let notifications: Notifications
 
     /// `arguments` — як у `ProcessInfo.processInfo.arguments`: перший елемент — шлях до програми.
     /// Аргументи порівнюються повністю, тож схожі рядки тестовий режим не вмикають.
@@ -38,11 +51,13 @@ nonisolated struct LaunchOptions: Equatable {
             isStoredInMemoryOnly = false
             onboarding = .stored
             addPreview = .autoToggling
+            notifications = .system
             return
         }
         isStoredInMemoryOnly = true
         addPreview = .alwaysOn
         onboarding = flags.contains(Self.showOnboardingArgument) ? .shown : .skipped
+        notifications = .inMemory(permission: flags.contains(Self.notificationsDeniedArgument) ? .denied : .allowed)
     }
 
     /// Режим поточного процесу.

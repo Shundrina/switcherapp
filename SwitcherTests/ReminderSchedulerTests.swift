@@ -57,6 +57,13 @@ final class FakeNotificationCenter: ReminderNotificationCenter {
         pending.removeAll { identifiers.contains($0.identifier) }
     }
 
+    /// Зареєстровані категорії (кнопка «Перемкнути»).
+    private(set) var categories: Set<UNNotificationCategory> = []
+
+    func setNotificationCategories(_ categories: Set<UNNotificationCategory>) {
+        self.categories = categories
+    }
+
     func deliveredNotificationRequests() -> [UNNotificationRequest] {
         delivered
     }
@@ -80,6 +87,7 @@ struct ReminderSchedulerTests {
     let scheduler: ReminderScheduler
     let calendar = TestClock.calendar
     let turnedOnAt = TestClock.date(day: 11, hour: 8, minute: 0)
+    let ruleEditedAt = TestClock.date(day: 1, hour: 9, minute: 0)
 
     init() throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
@@ -99,7 +107,9 @@ struct ReminderSchedulerTests {
     @discardableResult
     private func addRule(to item: SwitchItem, _ condition: ReminderCondition, _ amount: Int, _ unit: ReminderUnit,
                          repeats: Bool) -> ReminderRule {
-        let rule = ReminderRule(condition: condition, amount: amount, unit: unit, repeats: repeats)
+        // Правило створено разом із перемикачем, 1 листопада: «запізнілим» воно в цих тестах не буває.
+        let rule = ReminderRule(condition: condition, amount: amount, unit: unit, repeats: repeats,
+                                editedAt: ruleEditedAt)
         context.insert(rule)
         rule.item = item
         return rule
@@ -334,7 +344,8 @@ struct ReminderSchedulerTests {
         #expect(snapshot.createdAt == TestClock.date(day: 1, hour: 9, minute: 0))
         #expect(snapshot.lastToggledAt == turnedOnAt)
         #expect(snapshot.rules == [
-            ReminderRuleSnapshot(id: rule.uuid, condition: .always, amount: 3, unit: .days, repeats: true)
+            ReminderRuleSnapshot(id: rule.uuid, condition: .always, amount: 3, unit: .days, repeats: true,
+                                 editedAt: ruleEditedAt)
         ])
     }
 

@@ -38,15 +38,22 @@ final class ReminderRule {
     var unitRaw: String = "hours"
     /// Чи надсилати ще два нагадування через 10 і 20 хв після першого.
     var repeats: Bool = true
+    /// Коли правило створили — для порядку рядків на екрані перемикача.
+    var createdAt: Date = Date.now
+    /// Коли правило створили чи востаннє змінили. Якщо його перше нагадування на той момент уже
+    /// минуло, планувальник нагадує через 1 хв після цієї миті («запізніле правило»).
+    var editedAt: Date = Date.now
     var item: SwitchItem?
 
     /// `repeats`: не передано — за замовчуванням для одиниці (`ReminderUnit.repeatsByDefault`).
-    init(condition: ReminderCondition, amount: Int, unit: ReminderUnit, repeats: Bool? = nil) {
+    init(condition: ReminderCondition, amount: Int, unit: ReminderUnit, repeats: Bool? = nil, editedAt: Date = .now) {
         self.kindRaw = ReminderKind.afterDuration.rawValue
         self.conditionRaw = condition.rawValue
         self.amount = amount
         self.unitRaw = unit.rawValue
         self.repeats = repeats ?? unit.repeatsByDefault
+        self.createdAt = editedAt
+        self.editedAt = editedAt
     }
 
     /// Тип правила; невідоме збережене значення читається як «через певний час».

@@ -1,9 +1,12 @@
 import UserNotifications
 
-/// Категорія сповіщень-нагадувань із кнопкою «Перемкнути».
-enum ReminderNotifications {
+/// Категорія сповіщень-нагадувань із кнопкою «Перемкнути» і показ, коли застосунок відкритий.
+/// Не прив'язано до головного актора: делегат центру сповіщень читає це з будь-якого потоку.
+nonisolated enum ReminderNotifications {
     static let categoryID = "reminder"
     static let toggleActionID = "reminder.toggle"
+    /// Коли застосунок відкритий, сповіщення все одно показується банером і зі звуком.
+    static let presentationOptions: UNNotificationPresentationOptions = [.banner, .list, .sound]
 
     /// Кнопка «Перемкнути» спрацьовує без відкриття застосунку.
     static var category: UNNotificationCategory {
@@ -15,6 +18,7 @@ enum ReminderNotifications {
 /// Те, що `ReminderScheduler` використовує з центру сповіщень: у застосунку — `UNUserNotificationCenter`,
 /// у тестах — фейк у пам'яті.
 protocol ReminderNotificationCenter: AnyObject {
+    func setNotificationCategories(_ categories: Set<UNNotificationCategory>) async
     func add(_ request: UNNotificationRequest) async throws
     func pendingNotificationRequests() async -> [UNNotificationRequest]
     func removePendingNotificationRequests(withIdentifiers identifiers: [String]) async

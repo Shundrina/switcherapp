@@ -7,6 +7,8 @@ nonisolated struct ReminderRuleSnapshot: Equatable, Sendable {
     let amount: Int
     let unit: ReminderUnit
     let repeats: Bool
+    /// Коли правило створили чи востаннє змінили (див. `ReminderRule.editedAt`).
+    let editedAt: Date
 }
 
 /// Перемикач із правилами як просте значення — для планувальника.
@@ -29,7 +31,7 @@ extension ReminderSwitchSnapshot {
             rules: (item.rules ?? []).filter { !$0.isDeleted }.map { rule in
                 ReminderRuleSnapshot(
                     id: rule.uuid, condition: rule.condition, amount: rule.amount, unit: rule.unit,
-                    repeats: rule.repeats
+                    repeats: rule.repeats, editedAt: rule.editedAt
                 )
             }
         )
@@ -84,10 +86,14 @@ nonisolated enum ReminderPlanner {
     static let repeatIntervalMinutes = 10
     /// Найбільша кількість хвилин, годин чи днів у правилі; правило з більшою нічого не планує.
     static let maxAmount = 10_000
+    /// Через скільки після зміни правила приходить запізніле нагадування.
+    static let lateDelay: TimeInterval = 60
 
     /// Нагадування всіх правил усіх перемикачів, пізніші за `now`; якщо їх більше за `limit` —
     /// найраніші. Хвилини й години відраховуються абсолютним часом, дні — календарем
-    /// (та сама година на годиннику в поясі `calendar`).
+    /// (та сама година на годиннику в поясі `calendar`). Якщо перше нагадування настало не пізніше,
+    /// ніж правило створили чи змінили, — «запізніле правило»: перше нагадування через 1 хв після
+    /// зміни правила, а в тексті — фактичний прожитий час.
     static func plan(for switches: [ReminderSwitchSnapshot], now: Date = .now,
                      calendar: Calendar = .current) -> [PlannedReminder] {
         let reminders = switches.flatMap { item in
@@ -107,12 +113,17 @@ nonisolated enum ReminderPlanner {
         guard (1...maxAmount).contains(rule.amount), applies(rule.condition, isOn: item.isOn) else { return [] }
 
         let reference = item.lastToggledAt ?? item.createdAt
-        let firstDate: Date? = switch rule.unit {
+        let dueDate: Date? = switch rule.unit {
         case .minutes: reference.addingTimeInterval(Double(rule.amount) * 60)
         case .hours: reference.addingTimeInterval(Double(rule.amount) * 3600)
         case .days: calendar.date(byAdding: .day, value: rule.amount, to: reference)
         }
-        guard let firstDate else { return [] }
+        guard let dueDate else { return [] }
+
+        // Запізніле правило: відлік від зміни правила, а не від `now`, — тож при наступних відкриттях
+        // застосунку нагадування не повторюється.
+        let isLate = dueDate <= rule.editedAt
+        let firstDate = isLate ? rule.editedAt.addingTimeInterval(lateDelay) : dueDate
 
         let title = ReminderFormatting.title(icon: item.icon, name: item.name)
         let payload = ReminderPayload(switchID: item.id, wasOn: item.isOn)
@@ -120,14 +131,13 @@ nonisolated enum ReminderPlanner {
 
         return (0..<count).map { index in
             let extraMinutes = index * repeatIntervalMinutes
-            let elapsed = switch rule.unit {
-            case .minutes: ReminderFormatting.elapsed(hours: 0, minutes: rule.amount + extraMinutes)
-            case .hours: ReminderFormatting.elapsed(hours: rule.amount, minutes: extraMinutes)
-            case .days: ReminderFormatting.elapsed(days: rule.amount)
-            }
+            let date = firstDate.addingTimeInterval(Double(extraMinutes) * 60)
+            let elapsed = isLate
+                ? ReminderFormatting.elapsed(from: reference, to: date, unit: rule.unit, calendar: calendar)
+                : ReminderFormatting.elapsed(amount: rule.amount, unit: rule.unit, extraMinutes: extraMinutes)
             return PlannedReminder(
                 id: "reminder.\(item.id.uuidString).\(rule.id.uuidString).\(index)",
-                date: firstDate.addingTimeInterval(Double(extraMinutes) * 60),
+                date: date,
                 title: title,
                 body: ReminderFormatting.body(condition: rule.condition, elapsed: elapsed),
                 payload: payload

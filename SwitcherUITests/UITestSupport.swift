@@ -6,6 +6,10 @@ enum LaunchArgument {
     static let uiTesting = "-UITesting"
     /// Разом з `uiTesting`: онбординг показано незалежно від збереженого прапорця.
     static let showOnboarding = "-UITestingShowOnboarding"
+    /// Разом з `uiTesting`: дозвіл на сповіщення відмовлено (системне вікно не показується).
+    static let notificationsDenied = "-UITestingNotificationsDenied"
+    /// Разом з `uiTesting`: дозвіл на сповіщення надано (як і за замовчуванням у тестовому режимі).
+    static let notificationsAllowed = "-UITestingNotificationsAllowed"
 }
 
 /// Ідентифікатори доступності, на які спираються екранні тести.
@@ -35,6 +39,37 @@ enum AccessibilityID {
     static let noteKeyboardDoneButton = "noteKeyboardDoneButton"
     static let historyEmptyText = "historyEmptyText"
     static let historyEvent = "historyEvent"
+    /// Великий перемикач у картці екрана перемикача.
+    static let switchScreenToggle = "switchScreenToggle"
+    // Розділ «Нагадування» на екрані перемикача
+    static let addReminderButton = "addReminderButton"
+    /// Рядок правила (кнопка, мітка — текст рядка, наприклад «Через 30 хв, коли увімкнено · повтор»).
+    static let reminderRow = "reminderRow"
+    /// Напис «Сповіщення вимкнено» (лише коли дозвіл відмовлено).
+    static let notificationsDisabledNotice = "notificationsDisabledNotice"
+    /// Кнопка «Відкрити Параметри» під написом «Сповіщення вимкнено».
+    static let openNotificationSettingsButton = "openNotificationSettingsButton"
+    // Вікно правила (аркуш знизу)
+    static let reminderEditorCancelButton = "reminderEditorCancelButton"
+    static let reminderEditorSaveButton = "reminderEditorSaveButton"
+    /// «Коли»: кнопка умови `condition` — `"reminderConditionOption_" + ReminderCondition.rawValue`
+    /// (`on`, `off`, `always`); вибрана має рису доступності `isSelected`.
+    static func reminderConditionOption(_ condition: String) -> String { "reminderConditionOption_\(condition)" }
+    /// «Через»: кнопка одиниці — `"reminderUnitOption_" + ReminderUnit.rawValue` (`minutes`, `hours`, `days`);
+    /// вибрана має рису доступності `isSelected`.
+    static func reminderUnitOption(_ unit: String) -> String { "reminderUnitOption_\(unit)" }
+    /// Поле числа (`UITextField`, числова клавіатура).
+    static let reminderAmountField = "reminderAmountField"
+    /// Перемикач «Повторювати».
+    static let reminderRepeatToggle = "reminderRepeatToggle"
+    /// Приклад сповіщення: заголовок («🔥 Газ горить») і текст («Увімкнено вже 30 хв»).
+    static let reminderPreviewTitle = "reminderPreviewTitle"
+    static let reminderPreviewBody = "reminderPreviewBody"
+    /// «Видалити нагадування» — лише у вікні наявного правила.
+    static let reminderDeleteButton = "reminderDeleteButton"
+    /// Лише в тестовому режимі: невидимий елемент, `accessibilityValue` якого — тексти запланованих
+    /// у центрі в пам'яті сповіщень у порядку часу спрацювання, через "\n"; порожньо, якщо нічого.
+    static let pendingRemindersProbe = "pendingRemindersProbe"
     // Вибір кольору (TonePicker): кнопка кольору `tone` — `"toneOption_" + SwitchTone.rawValue`.
     static func toneOption(_ tone: String) -> String { "toneOption_\(tone)" }
     // Вибір значка (IconPicker, сітка 4×2 на екранах додавання й перемикача): комірка, у якій
@@ -56,15 +91,18 @@ let layoutTolerance: CGFloat = 0.001
 
 extension XCUIApplication {
     /// Запускає застосунок у тестовому режимі: порожнє сховище в пам'яті, онбординг пропущено
-    /// (або показано, якщо `showOnboarding`). `environment` — додаткові змінні середовища процесу
-    /// застосунку (наприклад, `"TZ"` — часовий пояс).
+    /// (або показано, якщо `showOnboarding`), центр сповіщень у пам'яті. `environment` — додаткові
+    /// змінні середовища процесу застосунку (наприклад, `"TZ"` — часовий пояс); `arguments` — додаткові
+    /// аргументи запуску (наприклад, `LaunchArgument.notificationsDenied`).
     @MainActor
-    static func launchedForTesting(showOnboarding: Bool = false, environment: [String: String] = [:]) -> XCUIApplication {
+    static func launchedForTesting(showOnboarding: Bool = false, environment: [String: String] = [:],
+                                   arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = [LaunchArgument.uiTesting]
         if showOnboarding {
             app.launchArguments.append(LaunchArgument.showOnboarding)
         }
+        app.launchArguments += arguments
         app.launchEnvironment.merge(environment) { _, new in new }
         app.launch()
         return app

@@ -4,6 +4,7 @@ import SwiftUI
 struct SwitchHistoryView: View {
     @Bindable var item: SwitchItem
     @Environment(\.now) private var now
+    @Environment(ReminderService.self) private var reminders: ReminderService?
     /// Назва в картці показана як поле редагування.
     @State private var isEditingName = false
     /// Текст поля назви; зберігається в `item` лише після завершення редагування.
@@ -28,6 +29,11 @@ struct SwitchHistoryView: View {
                 }
                 section("Значок") {
                     IconPicker(selection: $item.icon, tone: item.tone)
+                }
+                // Після значка, а не одразу під карткою: колір і значок лишаються там, де були,
+                // і перший ряд значків видно над клавіатурою, поки редагується примітка.
+                section("Нагадування") {
+                    ReminderSection(item: item)
                 }
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Історія")
@@ -57,7 +63,14 @@ struct SwitchHistoryView: View {
         }
         .onChange(of: item.isOn) { finishEditing() }
         .onChange(of: item.tone) { finishEditing() }
-        .onChange(of: item.icon) { finishEditing() }
+        .onChange(of: item.icon) {
+            finishEditing()
+            // Значок і назва — у заголовку запланованих сповіщень.
+            Task { await reminders?.reschedule() }
+        }
+        .onChange(of: item.name) {
+            Task { await reminders?.reschedule() }
+        }
         .onDisappear(perform: finishEditing)
     }
 
@@ -68,10 +81,14 @@ struct SwitchHistoryView: View {
                 Spacer()
                 Toggle(item.name, isOn: Binding(
                     get: { item.isOn },
-                    set: { item.setOn($0) }
+                    set: { isOn in
+                        item.setOn(isOn)
+                        Task { await reminders?.didToggle(item) }
+                    }
                 ))
                 .labelsHidden()
                 .toggleStyle(LampToggleStyle(large: true))
+                .accessibilityIdentifier("switchScreenToggle")
             }
             .modifier(EndsEditingOnTap(isEnabled: isEditing, action: finishEditing))
             VStack(alignment: .leading, spacing: 4) {

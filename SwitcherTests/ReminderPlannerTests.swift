@@ -33,9 +33,12 @@ struct ReminderPlannerTests {
     static let flame = SwitchIcon(rawValue: "🔥")!
     static let plant = SwitchIcon(rawValue: "🪴")!
 
+    /// Правило, змінене давно (`editedAt` — `.distantPast`): «запізніле правило» тут не діє,
+    /// його перевіряє `ReminderLateRuleTests`.
     private func rule(_ condition: ReminderCondition, _ amount: Int, _ unit: ReminderUnit,
                       repeats: Bool = false, id: UUID = fixedUUID(1)) -> ReminderRuleSnapshot {
-        ReminderRuleSnapshot(id: id, condition: condition, amount: amount, unit: unit, repeats: repeats)
+        ReminderRuleSnapshot(id: id, condition: condition, amount: amount, unit: unit, repeats: repeats,
+                             editedAt: .distantPast)
     }
 
     /// Газ. `lastToggledAt`: не передано — `toggledAt`; `.some(nil)` — ще не перемикали.

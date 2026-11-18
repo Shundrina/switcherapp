@@ -261,3 +261,55 @@ struct AddPreviewLaunchModeTests {
         #expect(mode.togglesItself(reduceMotion: reduceMotion) == false)
     }
 }
+
+/// Сповіщення в тестовому режимі (`LaunchOptions.notifications`). Звичайний запуск — справжній центр
+/// сповіщень і системний дозвіл. `-UITesting` — центр у пам'яті й дозвіл без системного вікна:
+/// за замовчуванням дозволено, `-UITestingNotificationsDenied` — відмовлено,
+/// `-UITestingNotificationsAllowed` — дозволено явно. Без `-UITesting` ці аргументи нічого не змінюють.
+@MainActor
+struct LaunchOptionsNotificationsTests {
+    private let executable = "/private/var/containers/Bundle/Application/X/Switcher.app/Switcher"
+
+    @Test func argumentNames() {
+        #expect(LaunchOptions.notificationsDeniedArgument == "-UITestingNotificationsDenied")
+        #expect(LaunchOptions.notificationsAllowedArgument == "-UITestingNotificationsAllowed")
+    }
+
+    @Test func normalLaunchUsesSystemNotifications() {
+        #expect(LaunchOptions(arguments: [executable]).notifications == .system)
+        #expect(LaunchOptions(arguments: []).notifications == .system)
+    }
+
+    @Test func uiTestingUsesInMemoryCenterAllowedByDefault() {
+        #expect(LaunchOptions(arguments: [executable, "-UITesting"]).notifications == .inMemory(permission: .allowed))
+    }
+
+    @Test func uiTestingWithDeniedArgument() {
+        let options = LaunchOptions(arguments: [executable, "-UITestingNotificationsDenied", "-UITesting"])
+
+        #expect(options.notifications == .inMemory(permission: .denied))
+    }
+
+    @Test func uiTestingWithAllowedArgument() {
+        let options = LaunchOptions(arguments: [executable, "-UITesting", "-UITestingNotificationsAllowed"])
+
+        #expect(options.notifications == .inMemory(permission: .allowed))
+    }
+
+    // Захисний: без `-UITesting` дозвіл з аргументу не підміняє системний.
+    @Test(arguments: ["-UITestingNotificationsDenied", "-UITestingNotificationsAllowed"])
+    func notificationArgumentsWithoutUITestingAreIgnored(argument: String) {
+        let options = LaunchOptions(arguments: [executable, argument])
+
+        #expect(options.notifications == .system)
+        #expect(options.isStoredInMemoryOnly == false)
+    }
+
+    // Режим сповіщень не змінює решти тестового режиму.
+    @Test func deniedArgumentKeepsOtherTestingModes() {
+        let options = LaunchOptions(arguments: [executable, "-UITesting", "-UITestingNotificationsDenied"])
+
+        #expect(options.isStoredInMemoryOnly == true)
+        #expect(options.onboarding == .skipped)
+    }
+}

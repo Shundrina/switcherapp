@@ -147,7 +147,7 @@ struct SwitchTextView: UIViewRepresentable {
             textView.accessibilityLabel = "Назва"
         case .note:
             textView.accessibilityLabel = "Примітка"
-            textView.inputAccessoryView = KeyboardDoneBar(for: textView)
+            textView.inputAccessoryView = KeyboardDoneBar(for: textView, accessibilityIdentifier: "noteKeyboardDoneButton")
         }
         textView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -374,15 +374,15 @@ final class PlaceholderTextView: UITextView {
 }
 
 /// Панель над клавіатурою з кнопкою «Готово», яка знімає фокус з поля.
-private final class KeyboardDoneBar: UIToolbar {
-    init(for textView: UITextView) {
+final class KeyboardDoneBar: UIToolbar {
+    init(for field: UIView, accessibilityIdentifier: String) {
         // Без початкової ширини панель розкладається з попередженнями про обмеження; далі ширину задає клавіатура.
         super.init(frame: CGRect(x: 0, y: 0, width: 320, height: 44))
-        let done = UIBarButtonItem(title: "Готово", primaryAction: UIAction { [weak textView] _ in
-            textView?.resignFirstResponder()
+        let done = UIBarButtonItem(title: "Готово", primaryAction: UIAction { [weak field] _ in
+            field?.resignFirstResponder()
         })
         done.style = .done
-        done.accessibilityIdentifier = "noteKeyboardDoneButton"
+        done.accessibilityIdentifier = accessibilityIdentifier
         items = [.flexibleSpace(), done]
         sizeToFit()
     }
