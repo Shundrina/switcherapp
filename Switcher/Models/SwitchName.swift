@@ -1,6 +1,7 @@
 import Foundation
 
-/// Що робить делегат поля «Назва» з правкою, яку пропонує UIKit, — до того, як вона потрапить у поле.
+/// Що робить делегат поля «Назва» чи «Примітка» з правкою, яку пропонує UIKit, — до того, як вона
+/// потрапить у поле.
 nonisolated enum SwitchNameEdit: Equatable, Sendable {
     /// Делегат повертає `true`: UIKit сам застосовує правку.
     case accept
@@ -8,7 +9,7 @@ nonisolated enum SwitchNameEdit: Equatable, Sendable {
     case replace(text: String, cursor: Int)
     /// Делегат повертає `false`: текст не змінюється.
     case reject
-    /// «Готово» в полі редагування: текст не змінюється, редагування завершується.
+    /// «Готово» в полі редагування назви: текст не змінюється, редагування завершується.
     case finish
 }
 
@@ -24,6 +25,11 @@ nonisolated enum SwitchName {
 
     /// Назва для `SwitchItem`: без пробілів і переносів по краях, не довша за `maxLength`.
     static func forSaving(_ text: String) -> String {
+        forSaving(text, maxLength: maxLength)
+    }
+
+    /// Текст без пробілів і переносів по краях, не довший за `maxLength` (назва й примітка).
+    fileprivate static func forSaving(_ text: String, maxLength: Int) -> String {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // Якщо межа припала на пробіл між словами, він не лишається в кінці.
         return String(trimmed.prefix(maxLength)).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -47,7 +53,44 @@ nonisolated enum SwitchName {
     }
 }
 
-// MARK: - Правка в полі «Назва» до того, як вона потрапить у поле
+/// Примітка до перемикача: межа довжини, лічильник під полем і текст для збереження.
+/// Як `SwitchName`, але примітка багаторядкова: переноси рядка всередині — її частина (кожен — один
+/// символ), а по краях обрізаються разом із пробілами. Порожня примітка — примітки немає.
+nonisolated enum SwitchNote {
+    static let maxLength = 200
+
+    /// Примітка для `SwitchItem`: без пробілів і переносів по краях, не довша за `maxLength`.
+    static func forSaving(_ text: String) -> String {
+        SwitchName.forSaving(text, maxLength: maxLength)
+    }
+
+    /// «12 / 200» — скільки символів у полі, разом із пробілами й переносами.
+    static func counterText(for text: String) -> String {
+        "\(text.count) / \(maxLength)"
+    }
+
+    /// «Символів: 12 з 200» — те саме число для VoiceOver.
+    static func counterAccessibilityLabel(for text: String) -> String {
+        "Символів: \(text.count) з \(maxLength)"
+    }
+
+    /// Рішення делегата поля «Примітка» про правку — як `SwitchName.edit(_:range:replacement:allowsNewlineFinish:)`,
+    /// але з межею `maxLength`, а переноси рядка лишаються як є: Return вставляє перенос, «Готово» не буває.
+    static func edit(_ text: String, range: NSRange, replacement: String) -> SwitchNameEdit {
+        SwitchName.edit(
+            text, range: range, replacement: replacement,
+            maxLength: maxLength, keepsNewlines: true, allowsNewlineFinish: false, keepsWordsWhole: true
+        )
+    }
+
+    /// Правка в обхід делегата (складання IME, диктування) — як `SwitchName.edit(from:to:)`,
+    /// але з межею `maxLength`, а переноси рядка лишаються як є.
+    static func edit(from old: String, to new: String) -> SwitchNameEdit {
+        SwitchName.edit(from: old, to: new, maxLength: maxLength, keepsNewlines: true)
+    }
+}
+
+// MARK: - Правка в полі «Назва» чи «Примітка» до того, як вона потрапить у поле
 
 nonisolated extension SwitchName {
     /// Рішення делегата поля «Назва» про правку: замінити `range` (одиниці UTF-16) у `text` на `replacement`.
@@ -60,12 +103,18 @@ nonisolated extension SwitchName {
     /// Переноси рядка у вставці стають пробілами — кожна послідовність одним; якщо `allowsNewlineFinish`,
     /// заміна з самих переносів — це «Готово». Некоректний діапазон — `.reject`.
     static func edit(_ text: String, range: NSRange, replacement: String, allowsNewlineFinish: Bool) -> SwitchNameEdit {
-        edit(text, range: range, replacement: replacement, allowsNewlineFinish: allowsNewlineFinish, keepsWordsWhole: true)
+        edit(
+            text, range: range, replacement: replacement,
+            maxLength: maxLength, keepsNewlines: false, allowsNewlineFinish: allowsNewlineFinish, keepsWordsWhole: true
+        )
     }
 
-    /// `keepsWordsWhole: false` — без винятку для одного слова: вставка завжди обрізається.
-    private static func edit(
-        _ text: String, range: NSRange, replacement: String, allowsNewlineFinish: Bool, keepsWordsWhole: Bool
+    /// Спільне для назви й примітки: межа `maxLength`; `keepsNewlines` — переноси рядка у вставці
+    /// лишаються як є (примітка), а не стають пробілами; `keepsWordsWhole: false` — без винятку
+    /// для одного слова: вставка завжди обрізається.
+    fileprivate static func edit(
+        _ text: String, range: NSRange, replacement: String,
+        maxLength: Int, keepsNewlines: Bool, allowsNewlineFinish: Bool, keepsWordsWhole: Bool
     ) -> SwitchNameEdit {
         let source = text as NSString
         let length = source.length
@@ -101,8 +150,8 @@ nonisolated extension SwitchName {
             }
         }
 
-        let hasNewlines = replacement.contains(where: \.isNewline)
-        let insertion = hasNewlines ? joiningNewlines(replacement) : replacement
+        let joinsNewlines = !keepsNewlines && replacement.contains(where: \.isNewline)
+        let insertion = joinsNewlines ? joiningNewlines(replacement) : replacement
         let prefix = source.substring(to: target.location)
         let suffix = source.substring(from: NSMaxRange(target))
         let limit = max(maxLength, text.count)
@@ -111,7 +160,7 @@ nonisolated extension SwitchName {
         // «кухні ») — усе або нічого: обрізане слово гірше за незмінене.
         if keepsWordsWhole, isWordEdit(replacing: source.substring(with: target), with: insertion) {
             if (prefix + insertion + suffix).count <= limit {
-                if !isSnapped, !hasNewlines { return .accept }
+                if !isSnapped, !joinsNewlines { return .accept }
                 return .replace(text: prefix + insertion + suffix, cursor: target.location + (insertion as NSString).length)
             }
             // Кінцевий пробіл можна відкинути, якщо без нього слово влазить.
@@ -134,7 +183,7 @@ nonisolated extension SwitchName {
         }
         let inserted = String(insertion.prefix(fitting))
 
-        if fitting == insertion.count, !isSnapped, !hasNewlines { return .accept }
+        if fitting == insertion.count, !isSnapped, !joinsNewlines { return .accept }
         if inserted.isEmpty, target.length == 0 { return .reject }
         return .replace(text: prefix + inserted + suffix, cursor: target.location + (inserted as NSString).length)
     }
@@ -145,6 +194,11 @@ nonisolated extension SwitchName {
     /// Відповідь — лише `.accept` (лишити `new`) або `.replace`: якщо не влазить нічого,
     /// повертається `old` з курсором там, де була правка.
     static func edit(from old: String, to new: String) -> SwitchNameEdit {
+        edit(from: old, to: new, maxLength: maxLength, keepsNewlines: false)
+    }
+
+    /// Спільне для назви й примітки: межа `maxLength`; `keepsNewlines` — переноси лишаються як є.
+    fileprivate static func edit(from old: String, to new: String, maxLength: Int, keepsNewlines: Bool) -> SwitchNameEdit {
         let oldCharacters = Array(old)
         let newCharacters = Array(new)
         let common = min(oldCharacters.count, newCharacters.count)
@@ -161,7 +215,10 @@ nonisolated extension SwitchName {
         )
         let replacement = String(newCharacters[head..<(newCharacters.count - tail)])
         // Різниця двох текстів нічого не каже про намір, тож без винятку для одного слова — лише обрізання.
-        let result = edit(old, range: range, replacement: replacement, allowsNewlineFinish: false, keepsWordsWhole: false)
+        let result = edit(
+            old, range: range, replacement: replacement,
+            maxLength: maxLength, keepsNewlines: keepsNewlines, allowsNewlineFinish: false, keepsWordsWhole: false
+        )
         return result == .reject ? .replace(text: old, cursor: range.location) : result
     }
 

@@ -9,6 +9,8 @@ final class SwitchItem {
     var lastToggledAt: Date?
     var iconRaw: String = "\u{2714}\u{FE0F}"
     var toneRaw: String = "amber"
+    /// Необов'язкова примітка (див. `SwitchNote`); порожня — примітки немає.
+    var note: String = ""
 
     @Relationship(deleteRule: .cascade, inverse: \SwitchEvent.item)
     var events: [SwitchEvent]? = []
@@ -66,6 +68,15 @@ final class SwitchItem {
         let saved = SwitchName.forSaving(text)
         guard !saved.isEmpty, saved != name else { return }
         name = saved
+    }
+
+    /// Зберігає примітку з поля редагування (див. `SwitchNote.forSaving`); текст з самих пробілів
+    /// і переносів прибирає примітку. Ту саму примітку не присвоює повторно, щоб модель не позначалася
+    /// зміненою. Назви, історії, стану й вигляду не змінює.
+    func updateNote(to text: String) {
+        let saved = SwitchNote.forSaving(text)
+        guard saved != note else { return }
+        note = saved
     }
 
     /// Змінює стан і записує подію в історію; повторне встановлення того самого стану нічого не робить.

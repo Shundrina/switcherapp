@@ -19,10 +19,20 @@ enum AccessibilityID {
     static let addSwitchNameCounter = "addSwitchNameCounter"
     static let addSwitchSaveButton = "addSwitchSaveButton"
     static let addSwitchCancelButton = "addSwitchCancelButton"
+    static let addSwitchNoteField = "addSwitchNoteField"
+    static let addSwitchNoteCounter = "addSwitchNoteCounter"
+    /// Видима рамка поля «Примітка» (заокруглений прямокутник навколо поля) — один елемент на всю рамку.
+    static let addSwitchNoteFrame = "addSwitchNoteFrame"
     // Екран перемикача (SwitchHistoryView)
     static let switchNameButton = "switchNameButton"
     static let switchNameEditField = "switchNameEditField"
     static let switchNameEditCounter = "switchNameEditCounter"
+    /// Примітка в картці: кнопка з текстом примітки або, якщо її немає, «Додати примітку».
+    static let switchNoteButton = "switchNoteButton"
+    static let switchNoteEditField = "switchNoteEditField"
+    static let switchNoteEditCounter = "switchNoteEditCounter"
+    /// Кнопка «Готово» на панелі над клавіатурою, коли редагується примітка (обидва екрани).
+    static let noteKeyboardDoneButton = "noteKeyboardDoneButton"
     static let historyEmptyText = "historyEmptyText"
     static let historyEvent = "historyEvent"
     // Вибір кольору (TonePicker): кнопка кольору `tone` — `"toneOption_" + SwitchTone.rawValue`.
@@ -70,6 +80,30 @@ extension XCUIApplication {
     @MainActor
     var switchNameEditField: XCUIElement {
         textViews[AccessibilityID.switchNameEditField]
+    }
+
+    /// Поле «Примітка» на екрані додавання — багаторядкове (`UITextView`).
+    @MainActor
+    var addSwitchNoteField: XCUIElement {
+        textViews[AccessibilityID.addSwitchNoteField]
+    }
+
+    /// Поле редагування примітки на екрані перемикача — багаторядкове (`UITextView`).
+    @MainActor
+    var switchNoteEditField: XCUIElement {
+        textViews[AccessibilityID.switchNoteEditField]
+    }
+
+    /// Примітка в картці на екрані перемикача (або «Додати примітку»).
+    @MainActor
+    var switchNoteButton: XCUIElement {
+        buttons[AccessibilityID.switchNoteButton]
+    }
+
+    /// Кнопка «Готово» над клавіатурою в полі примітки.
+    @MainActor
+    var noteKeyboardDoneButton: XCUIElement {
+        buttons[AccessibilityID.noteKeyboardDoneButton]
     }
 
     /// Прокрутка екрана перемикача. Шукається в головному вікні: `app.scrollViews.firstMatch`

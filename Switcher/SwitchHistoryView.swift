@@ -9,6 +9,15 @@ struct SwitchHistoryView: View {
     /// Текст поля назви; зберігається в `item` лише після завершення редагування.
     @State private var draft = ""
     @State private var isNameFocused = false
+    /// Примітка в картці показана як поле редагування; одночасно з назвою не редагується.
+    @State private var isEditingNote = false
+    /// Текст поля примітки; зберігається в `item` лише після завершення редагування.
+    @State private var noteDraft = ""
+    @State private var isNoteFocused = false
+
+    private var isEditing: Bool {
+        isEditingName || isEditingNote
+    }
 
     var body: some View {
         ScrollView {
@@ -27,25 +36,29 @@ struct SwitchHistoryView: View {
                         .padding(.horizontal, 4)
                     history
                 }
-                .modifier(EndsEditingOnTap(isEnabled: isEditingName, action: finishNameEditing))
+                .modifier(EndsEditingOnTap(isEnabled: isEditing, action: finishEditing))
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
             .background {
-                Color.clear.modifier(EndsEditingOnTap(isEnabled: isEditingName, action: finishNameEditing))
+                Color.clear.modifier(EndsEditingOnTap(isEnabled: isEditing, action: finishEditing))
             }
         }
         .scrollDismissesKeyboard(.immediately)
         .background(Theme.background)
         .navigationBarTitleDisplayMode(.inline)
-        // Редагування назви завершується, щойно поле втрачає фокус, змінюється перемикач або екран зникає.
+        // Редагування назви чи примітки завершується, щойно поле втрачає фокус (зокрема «Готово»
+        // над клавіатурою в примітці), змінюється перемикач або екран зникає.
         .onChange(of: isNameFocused) { _, isFocused in
             if !isFocused { finishNameEditing() }
         }
-        .onChange(of: item.isOn) { finishNameEditing() }
-        .onChange(of: item.tone) { finishNameEditing() }
-        .onChange(of: item.icon) { finishNameEditing() }
-        .onDisappear(perform: finishNameEditing)
+        .onChange(of: isNoteFocused) { _, isFocused in
+            if !isFocused { finishNoteEditing() }
+        }
+        .onChange(of: item.isOn) { finishEditing() }
+        .onChange(of: item.tone) { finishEditing() }
+        .onChange(of: item.icon) { finishEditing() }
+        .onDisappear(perform: finishEditing)
     }
 
     private var hero: some View {
@@ -60,7 +73,7 @@ struct SwitchHistoryView: View {
                 .labelsHidden()
                 .toggleStyle(LampToggleStyle(large: true))
             }
-            .modifier(EndsEditingOnTap(isEnabled: isEditingName, action: finishNameEditing))
+            .modifier(EndsEditingOnTap(isEnabled: isEditing, action: finishEditing))
             VStack(alignment: .leading, spacing: 4) {
                 if isEditingName {
                     nameField
@@ -71,14 +84,20 @@ struct SwitchHistoryView: View {
                     .font(.subheadline.weight(.medium))
                     .monospacedDigit()
                     .foregroundStyle(item.isOn ? Theme.onTone.opacity(0.8) : Theme.muted)
-                    .modifier(EndsEditingOnTap(isEnabled: isEditingName, action: finishNameEditing))
+                    .modifier(EndsEditingOnTap(isEnabled: isEditing, action: finishEditing))
+                if isEditingNote {
+                    noteField
+                        .padding(.top, 4)
+                } else {
+                    noteButton
+                }
             }
             .animation(.easeInOut(duration: 0.3), value: item.isOn)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
         .background {
-            Color.clear.modifier(EndsEditingOnTap(isEnabled: isEditingName, action: finishNameEditing))
+            Color.clear.modifier(EndsEditingOnTap(isEnabled: isEditing, action: finishEditing))
         }
         .switchCard(isOn: item.isOn, tone: item.tone, cornerRadius: 28, origin: UnitPoint(x: 0.86, y: 0.24))
     }
@@ -106,10 +125,13 @@ struct SwitchHistoryView: View {
             // Багаторядкове поле, щоб довга назва переносилася так само, як у режимі перегляду.
             // Те саме обмеження, що й у формі додавання. «Готово» вставляє перенос рядка — тоді
             // текст не змінюється й редагування завершується; переноси з вставки стають пробілами.
-            SwitchNameTextView(
+            SwitchTextView(
+                kind: .name,
                 text: $draft,
                 isFocused: $isNameFocused,
                 placeholder: "Назва перемикача",
+                textStyle: .title1,
+                fontWeight: .bold,
                 textColor: item.isOn ? Theme.onTone : Theme.ink,
                 placeholderColor: item.isOn ? Theme.onTone.opacity(0.6) : Theme.muted,
                 accessibilityIdentifier: "switchNameEditField",
@@ -124,7 +146,58 @@ struct SwitchHistoryView: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .accessibilityLabel(SwitchName.counterAccessibilityLabel(for: draft))
                 .accessibilityIdentifier("switchNameEditCounter")
-                .modifier(EndsEditingOnTap(isEnabled: isEditingName, action: finishNameEditing))
+                .modifier(EndsEditingOnTap(isEnabled: isEditing, action: finishEditing))
+        }
+    }
+
+    /// Примітка повністю, з переносами, або блідий «Додати примітку»: натискання відкриває поле
+    /// редагування на тому самому місці. Зона натискання — увесь рядок картки, не нижча за 44 pt.
+    private var noteButton: some View {
+        let label = item.note.isEmpty ? "Додати примітку" : item.note
+        return Button(action: startNoteEditing) {
+            Text(label)
+                .font(.footnote)
+                .foregroundStyle(noteColor)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityHint(item.note.isEmpty ? "" : "Змінити примітку")
+        .accessibilityIdentifier("switchNoteButton")
+    }
+
+    private var noteColor: Color {
+        if item.note.isEmpty {
+            return item.isOn ? Theme.onTone.opacity(0.6) : Theme.muted
+        }
+        return item.isOn ? Theme.onTone : Theme.ink
+    }
+
+    private var noteField: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            // Return вставляє перенос рядка; редагування завершує «Готово» над клавіатурою.
+            SwitchTextView(
+                kind: .note,
+                text: $noteDraft,
+                isFocused: $isNoteFocused,
+                placeholder: "Наприклад, «Поливати по суботах»",
+                textStyle: .footnote,
+                fontWeight: .regular,
+                textColor: item.isOn ? Theme.onTone : Theme.ink,
+                placeholderColor: item.isOn ? Theme.onTone.opacity(0.6) : Theme.muted,
+                accessibilityIdentifier: "switchNoteEditField"
+            )
+            .onAppear { isNoteFocused = true }
+            Text(SwitchNote.counterText(for: noteDraft))
+                .font(.footnote.weight(.medium))
+                .monospacedDigit()
+                .foregroundStyle(item.isOn ? Theme.onTone.opacity(0.8) : Theme.muted)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .accessibilityLabel(SwitchNote.counterAccessibilityLabel(for: noteDraft))
+                .accessibilityIdentifier("switchNoteEditCounter")
+                .modifier(EndsEditingOnTap(isEnabled: isEditing, action: finishEditing))
         }
     }
 
@@ -140,14 +213,28 @@ struct SwitchHistoryView: View {
             Text(title)
                 .capsStyle()
                 .padding(.horizontal, 4)
-                .modifier(EndsEditingOnTap(isEnabled: isEditingName, action: finishNameEditing))
+                .modifier(EndsEditingOnTap(isEnabled: isEditing, action: finishEditing))
             content()
         }
     }
 
+    /// Одночасно редагується щось одне: відкрита примітка спершу зберігається.
     private func startNameEditing() {
+        finishNoteEditing()
         draft = item.name
         isEditingName = true
+    }
+
+    /// Одночасно редагується щось одне: відкрита назва спершу зберігається.
+    private func startNoteEditing() {
+        finishNameEditing()
+        noteDraft = item.note
+        isEditingNote = true
+    }
+
+    private func finishEditing() {
+        finishNameEditing()
+        finishNoteEditing()
     }
 
     /// Зберігає назву й повертає режим перегляду. Кілька шляхів завершення можуть спрацювати
@@ -157,6 +244,14 @@ struct SwitchHistoryView: View {
         isEditingName = false
         isNameFocused = false
         item.rename(to: draft)
+    }
+
+    /// Зберігає примітку й повертає режим перегляду; як і в назви, зберігає лише перший виклик.
+    private func finishNoteEditing() {
+        guard isEditingNote else { return }
+        isEditingNote = false
+        isNoteFocused = false
+        item.updateNote(to: noteDraft)
     }
 
     @ViewBuilder
@@ -191,8 +286,8 @@ struct SwitchHistoryView: View {
     }
 }
 
-/// Дотик по вмісту завершує редагування назви. Кнопки всередині спрацьовують як звичайно;
-/// поки назву не редагують, жест вимкнено.
+/// Дотик по вмісту завершує редагування назви чи примітки. Кнопки всередині спрацьовують як звичайно;
+/// поки ні назву, ні примітку не редагують, жест вимкнено.
 private struct EndsEditingOnTap: ViewModifier {
     let isEnabled: Bool
     let action: () -> Void

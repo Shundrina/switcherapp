@@ -10,6 +10,8 @@ struct AddSwitchView: View {
     @State private var tone = SwitchTone.amber
     @State private var previewIsOn = LaunchOptions.current.addPreview.startsOn
     @State private var isNameFocused = false
+    @State private var note = ""
+    @State private var isNoteFocused = false
 
     private var savedName: String {
         SwitchName.forSaving(name)
@@ -62,6 +64,37 @@ struct AddSwitchView: View {
                         .padding(.horizontal, 4)
                         .accessibilityLabel(SwitchName.counterAccessibilityLabel(for: name))
                         .accessibilityIdentifier("addSwitchNameCounter")
+                }
+                field("Примітка") {
+                    let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    // Необов'язкова, багаторядкова: Return вставляє перенос рядка, а «Готово» над
+                    // клавіатурою лише ховає клавіатуру. Обмеження — як у назви, межа 200 символів.
+                    // Поле займає всю рамку (відступи — всередині нього), тож дотик будь-де в ній дає фокус.
+                    SwitchTextView(
+                        kind: .note,
+                        text: $note,
+                        isFocused: $isNoteFocused,
+                        placeholder: "Необов'язково",
+                        textStyle: .body,
+                        fontWeight: .regular,
+                        textColor: Theme.ink,
+                        placeholderColor: Color(uiColor: .placeholderText),
+                        accessibilityIdentifier: "addSwitchNoteField",
+                        insets: UIEdgeInsets(top: 18, left: 16, bottom: 18, right: 16),
+                        minHeight: 56
+                    )
+                    .background(Theme.surface, in: shape)
+                    .overlay(shape.strokeBorder(Theme.ink, lineWidth: 2).opacity(isNoteFocused ? 1 : 0))
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("addSwitchNoteFrame")
+                    Text(SwitchNote.counterText(for: note))
+                        .font(.footnote.weight(.medium))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.muted)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.horizontal, 4)
+                        .accessibilityLabel(SwitchNote.counterAccessibilityLabel(for: note))
+                        .accessibilityIdentifier("addSwitchNoteCounter")
                 }
                 field("Колір") {
                     TonePicker(selection: $tone)
@@ -116,7 +149,9 @@ struct AddSwitchView: View {
 
     private func save() {
         guard !savedName.isEmpty else { return }
-        modelContext.insert(SwitchItem(name: savedName, icon: icon, tone: tone))
+        let item = SwitchItem(name: savedName, icon: icon, tone: tone)
+        item.updateNote(to: note)
+        modelContext.insert(item)
         dismiss()
     }
 }

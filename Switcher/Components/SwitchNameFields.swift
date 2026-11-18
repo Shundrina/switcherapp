@@ -1,15 +1,16 @@
 import SwiftUI
 import UIKit
 
-// Поля «Назва» на UIKit: делегат відкидає зайве ДО того, як воно потрапить у поле
-// (`SwitchName.edit`), тож межа в 30 символів не змагається з рендером, як у SwiftUI `TextField`.
+// Поля «Назва» й «Примітка» на UIKit: делегат відкидає зайве ДО того, як воно потрапить у поле
+// (`SwitchName.edit`, `SwitchNote.edit`), тож межа довжини не змагається з рендером, як у SwiftUI `TextField`.
 //
 // Фокус — власна прив'язка `isFocused` замість `@FocusState` (з UIKit-полем він не працює):
 // SwiftUI → поле через `wantsFocus`, поле → SwiftUI через делегат на початку й наприкінці редагування.
 //
 // Складання тексту (IME, диктування): поки в полі є позначений текст (`markedTextRange`), правки
 // приймаються як є, а прив'язка не оновлюється; щойно складання завершилося, межу застосовує
-// `SwitchName.edit(from:to:)` до різниці між останнім прийнятим текстом і тим, що в полі.
+// `SwitchName.edit(from:to:)` чи `SwitchNote.edit(from:to:)` до різниці між останнім прийнятим
+// текстом і тим, що в полі.
 
 /// Однорядкове поле «Назва» на екрані додавання. «Готово» на клавіатурі лише ховає клавіатуру
 /// (перемикач створює кнопка «Додати»); переноси рядка з вставки стають пробілами.
@@ -102,37 +103,58 @@ struct SwitchNameTextField: UIViewRepresentable {
     }
 }
 
-/// Багаторядкове поле редагування назви на екрані перемикача: росте по висоті з текстом,
-/// як назва в режимі перегляду. «Готово» (перенос рядка) викликає `onFinish`.
-struct SwitchNameTextView: UIViewRepresentable {
+/// Багаторядкове поле, що росте по висоті з текстом.
+/// - `.name` — редагування назви на екрані перемикача, як назва в режимі перегляду:
+///   «Готово» на клавіатурі (перенос рядка) викликає `onFinish`.
+/// - `.note` — примітка: Return вставляє перенос рядка, а редагування завершує «Готово» на панелі
+///   над клавіатурою — воно лише знімає фокус з поля (`isFocused` стає `false`).
+struct SwitchTextView: UIViewRepresentable {
+    enum Kind {
+        case name
+        case note
+    }
+
+    let kind: Kind
     @Binding var text: String
     @Binding var isFocused: Bool
     let placeholder: String
+    let textStyle: UIFont.TextStyle
+    let fontWeight: UIFont.Weight
     /// Колір тексту й курсора.
     let textColor: Color
     let placeholderColor: Color
     let accessibilityIdentifier: String
-    let onFinish: () -> Void
+    /// Відступи тексту всередині поля: дотик у них теж ставить курсор, тож поле може займати всю рамку.
+    var insets: UIEdgeInsets = .zero
+    /// Найменша висота поля разом з `insets`.
+    var minHeight: CGFloat = 0
+    var onFinish: () -> Void = {}
 
-    func makeUIView(context: Context) -> NameTextView {
-        let textView = NameTextView()
+    func makeUIView(context: Context) -> PlaceholderTextView {
+        let textView = PlaceholderTextView()
         textView.delegate = context.coordinator
-        textView.font = .scaledSystemFont(.title1, weight: .bold)
+        textView.font = .scaledSystemFont(textStyle, weight: fontWeight)
         textView.adjustsFontForContentSizeCategory = true
         textView.isScrollEnabled = false
         textView.backgroundColor = .clear
-        textView.textContainerInset = .zero
+        textView.textContainerInset = insets
         textView.textContainer.lineFragmentPadding = 0
-        textView.returnKeyType = .done
         textView.placeholder = placeholder
         textView.accessibilityIdentifier = accessibilityIdentifier
-        textView.accessibilityLabel = "Назва"
+        switch kind {
+        case .name:
+            textView.returnKeyType = .done
+            textView.accessibilityLabel = "Назва"
+        case .note:
+            textView.accessibilityLabel = "Примітка"
+            textView.inputAccessoryView = KeyboardDoneBar(for: textView)
+        }
         textView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return textView
     }
 
-    func updateUIView(_ textView: NameTextView, context: Context) {
+    func updateUIView(_ textView: PlaceholderTextView, context: Context) {
         context.coordinator.parent = self
         if textView.markedTextRange == nil, textView.text != text {
             textView.text = text
@@ -151,9 +173,9 @@ struct SwitchNameTextView: UIViewRepresentable {
         textView.wantsFocus = isFocused
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView textView: NameTextView, context: Context) -> CGSize? {
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView textView: PlaceholderTextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width.isFinite else { return nil }
-        return CGSize(width: width, height: textView.fittingHeight(width: width))
+        return CGSize(width: width, height: max(minHeight, textView.fittingHeight(width: width)))
     }
 
     func makeCoordinator() -> Coordinator {
@@ -161,18 +183,22 @@ struct SwitchNameTextView: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
-        var parent: SwitchNameTextView
+        var parent: SwitchTextView
         /// Кольори, уже присвоєні полю.
         var appliedTextColor: Color?
         var appliedPlaceholderColor: Color?
 
-        init(parent: SwitchNameTextView) {
+        init(parent: SwitchTextView) {
             self.parent = parent
         }
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
             guard textView.markedTextRange == nil else { return true }
-            switch SwitchName.edit(textView.text, range: range, replacement: text, allowsNewlineFinish: true) {
+            let edit = switch parent.kind {
+            case .name: SwitchName.edit(textView.text, range: range, replacement: text, allowsNewlineFinish: true)
+            case .note: SwitchNote.edit(textView.text, range: range, replacement: text)
+            }
+            switch edit {
             case .accept:
                 return true
             case .replace(let text, let cursor):
@@ -191,7 +217,11 @@ struct SwitchNameTextView: UIViewRepresentable {
             textView.invalidateIntrinsicContentSize()
             guard textView.markedTextRange == nil else { return }
             let current = textView.text ?? ""
-            if case .replace(let text, let cursor) = SwitchName.edit(from: parent.text, to: current) {
+            let edit = switch parent.kind {
+            case .name: SwitchName.edit(from: parent.text, to: current)
+            case .note: SwitchNote.edit(from: parent.text, to: current)
+            }
+            if case .replace(let text, let cursor) = edit {
                 apply(text, cursor: cursor, to: textView)
             } else if parent.text != current {
                 parent.text = current
@@ -237,7 +267,7 @@ final class NameTextField: UITextField {
 }
 
 /// `UITextView` з підказкою в порожньому полі й фокусом, як у `NameTextField`.
-final class NameTextView: UITextView {
+final class PlaceholderTextView: UITextView {
     private let placeholderLabel = UILabel()
 
     var placeholder: String {
@@ -340,6 +370,26 @@ final class NameTextView: UITextView {
         } else if !wantsFocus, isFirstResponder {
             resignFirstResponder()
         }
+    }
+}
+
+/// Панель над клавіатурою з кнопкою «Готово», яка знімає фокус з поля.
+private final class KeyboardDoneBar: UIToolbar {
+    init(for textView: UITextView) {
+        // Без початкової ширини панель розкладається з попередженнями про обмеження; далі ширину задає клавіатура.
+        super.init(frame: CGRect(x: 0, y: 0, width: 320, height: 44))
+        let done = UIBarButtonItem(title: "Готово", primaryAction: UIAction { [weak textView] _ in
+            textView?.resignFirstResponder()
+        })
+        done.style = .done
+        done.accessibilityIdentifier = "noteKeyboardDoneButton"
+        items = [.flexibleSpace(), done]
+        sizeToFit()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 }
 
