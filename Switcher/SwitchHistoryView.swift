@@ -276,7 +276,7 @@ struct SwitchHistoryView: View {
                                     .fill(Theme.line)
                                     .frame(height: 1)
                             }
-                            EventRow(event: event, tone: item.tone)
+                            EventRow(event: event, time: SwitchFormatting.time(event.timestamp), tone: item.tone)
                         }
                     }
                     .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -299,8 +299,12 @@ private struct EndsEditingOnTap: ViewModifier {
     }
 }
 
+/// Час рахує батьківський view, який залежить від `\.now`: сам запис (клас `@Model`) після зміни
+/// поясу не змінюється, і SwiftUI не перемалював би рядок зі старим часом.
 private struct EventRow: View {
     let event: SwitchEvent
+    /// Час перемикання «08:15» у поточному поясі.
+    let time: String
     let tone: SwitchTone
 
     var body: some View {
@@ -314,7 +318,7 @@ private struct EventRow: View {
                 .font(.body.weight(.medium))
                 .foregroundStyle(Theme.ink)
             Spacer()
-            Text(SwitchFormatting.time(event.timestamp))
+            Text(time)
                 .font(.subheadline.weight(.medium))
                 .monospacedDigit()
                 .foregroundStyle(Theme.muted)

@@ -52,14 +52,16 @@ let uiTimeout: TimeInterval = 10
 
 extension XCUIApplication {
     /// Запускає застосунок у тестовому режимі: порожнє сховище в пам'яті, онбординг пропущено
-    /// (або показано, якщо `showOnboarding`).
+    /// (або показано, якщо `showOnboarding`). `environment` — додаткові змінні середовища процесу
+    /// застосунку (наприклад, `"TZ"` — часовий пояс).
     @MainActor
-    static func launchedForTesting(showOnboarding: Bool = false) -> XCUIApplication {
+    static func launchedForTesting(showOnboarding: Bool = false, environment: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = [LaunchArgument.uiTesting]
         if showOnboarding {
             app.launchArguments.append(LaunchArgument.showOnboarding)
         }
+        app.launchEnvironment.merge(environment) { _, new in new }
         app.launch()
         return app
     }
