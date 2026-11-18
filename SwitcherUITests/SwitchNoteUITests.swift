@@ -369,7 +369,13 @@ final class SwitchNoteUITests: XCTestCase {
         let done = app.noteKeyboardDoneButton
         XCTAssertTrue(done.waitForExistence(timeout: uiTimeout), "Немає кнопки «Готово» над клавіатурою")
         XCTAssertLessThan(flame.frame.midY, done.frame.maxY, "Центр 🔥 \(flame.frame) під клавіатурою (низ «Готово» \(done.frame)) — користувачка його не бачить")
-        XCTAssertFalse(done.frame.contains(CGPoint(x: flame.frame.midX, y: flame.frame.midY)), "Центр 🔥 \(flame.frame) під кнопкою «Готово» \(done.frame)")
+        let flameCenter = CGPoint(x: flame.frame.midX, y: flame.frame.midY)
+        XCTAssertFalse(done.frame.contains(flameCenter), "Центр 🔥 \(flame.frame) під кнопкою «Готово» \(done.frame)")
+        // А от у прозорій смузі панелі — так: інакше натискання не перевіряє, що панель пропускає дотики.
+        XCTAssertGreaterThan(flame.frame.maxY, done.frame.minY, "🔥 \(flame.frame) вище за панель «Готово» \(done.frame) — тест не перевіряє прозорість панелі")
+        let bar = app.toolbars.containing(.button, identifier: AccessibilityID.noteKeyboardDoneButton).firstMatch
+        XCTAssertTrue(bar.exists, "Немає панелі з «Готово» над клавіатурою")
+        XCTAssertTrue(bar.frame.contains(flameCenter), "Центр 🔥 \(flame.frame) поза смугою панелі «Готово» \(bar.frame) — тест не перевіряє прозорість панелі")
         flame.tap()
 
         XCTAssertTrue(
@@ -420,7 +426,7 @@ final class SwitchNoteUITests: XCTestCase {
     @MainActor
     private func openAddScreen(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(app.addSwitchButton.waitForExistence(timeout: uiTimeout), "Немає кнопки додавання в списку", file: file, line: line)
-        app.addSwitchButton.tapAfterSystemBanner()
+        app.addSwitchButton.tapAfterSystemBanner(file: file, line: line)
         XCTAssertTrue(app.addSwitchNameField.waitForExistence(timeout: uiTimeout), "Немає поля назви на екрані додавання", file: file, line: line)
         XCTAssertTrue(
             waitUntilHittable(app.buttons[AccessibilityID.addSwitchSaveButton]),

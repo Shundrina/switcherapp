@@ -52,7 +52,7 @@ final class AddSwitchPickerTapUITests: XCTestCase {
     @MainActor
     private func openAddScreen(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(app.addSwitchButton.waitForExistence(timeout: uiTimeout), "Немає кнопки додавання в списку", file: file, line: line)
-        app.addSwitchButton.tapAfterSystemBanner()
+        app.addSwitchButton.tapAfterSystemBanner(file: file, line: line)
         XCTAssertTrue(app.addSwitchNameField.waitForExistence(timeout: uiTimeout), "Немає поля назви на екрані додавання", file: file, line: line)
         XCTAssertTrue(
             waitUntilHittable(app.buttons[AccessibilityID.addSwitchSaveButton]),

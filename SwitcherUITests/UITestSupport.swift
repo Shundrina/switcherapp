@@ -124,14 +124,16 @@ extension XCUIApplication {
     /// жест там, де його закриває клавіатура, і тоді жест дістається клавіатурі, а не прокрутці.
     /// Жест іде по правому полю екрана (поза картками й кнопками) — щоб це не сприйнялося як натискання.
     @MainActor
-    func scrollSwitchScreenUpAboveKeyboard() {
-        let window = windows.element(boundBy: 0).frame
+    func scrollSwitchScreenUpAboveKeyboard(file: StaticString = #filePath, line: UInt = #line) {
+        let scrollView = switchScreenScrollView
+        XCTAssertTrue(scrollView.waitForExistence(timeout: uiTimeout), "Немає прокрутки екрана перемикача — відкрито інший екран?", file: file, line: line)
+        let scrollFrame = scrollView.frame
         let keyboard = keyboards.firstMatch
-        // Верх клавіатури (без смуги підказок і панелі над нею, тож із запасом), або низ вікна, якщо клавіатури немає.
-        let visibleBottom = keyboard.exists ? min(keyboard.frame.minY, window.maxY) : window.maxY
+        // Верх клавіатури (без смуги підказок і панелі над нею, тож із запасом), або низ прокрутки, якщо клавіатури немає.
+        let visibleBottom = keyboard.exists ? min(keyboard.frame.minY, scrollFrame.maxY) : scrollFrame.maxY
         let origin = coordinate(withNormalizedOffset: .zero)
-        let start = origin.withOffset(CGVector(dx: window.maxX - 8, dy: visibleBottom * 0.6))
-        let end = origin.withOffset(CGVector(dx: window.maxX - 8, dy: visibleBottom * 0.15))
+        let start = origin.withOffset(CGVector(dx: scrollFrame.maxX - 8, dy: visibleBottom * 0.6))
+        let end = origin.withOffset(CGVector(dx: scrollFrame.maxX - 8, dy: visibleBottom * 0.15))
         start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .default, thenHoldForDuration: 0.05)
     }
 
@@ -146,7 +148,7 @@ extension XCUIApplication {
     @discardableResult
     func addSwitch(named name: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         XCTAssertTrue(addSwitchButton.waitForExistence(timeout: uiTimeout), "Немає кнопки додавання в списку", file: file, line: line)
-        addSwitchButton.tapAfterSystemBanner()
+        addSwitchButton.tapAfterSystemBanner(file: file, line: line)
 
         let field = addSwitchNameField
         XCTAssertTrue(field.waitForExistence(timeout: uiTimeout), "Немає поля назви на екрані додавання", file: file, line: line)
@@ -155,7 +157,7 @@ extension XCUIApplication {
 
         let save = buttons[AccessibilityID.addSwitchSaveButton]
         XCTAssertTrue(save.waitForExistence(timeout: uiTimeout), "Немає кнопки «Додати»", file: file, line: line)
-        save.tapAfterSystemBanner()
+        save.tapAfterSystemBanner(file: file, line: line)
 
         let row = row(named: name)
         XCTAssertTrue(row.waitForExistence(timeout: uiTimeout), "Рядок «\(name)» не з'явився в списку", file: file, line: line)
@@ -179,7 +181,7 @@ extension XCUIApplication {
     func goBackToList(file: StaticString = #filePath, line: UInt = #line) {
         let back = navigationBars.buttons.firstMatch
         XCTAssertTrue(back.waitForExistence(timeout: uiTimeout), "Немає кнопки «Назад»", file: file, line: line)
-        back.tapAfterSystemBanner()
+        back.tapAfterSystemBanner(file: file, line: line)
         XCTAssertTrue(addSwitchButton.waitForExistence(timeout: uiTimeout), "Список не показано", file: file, line: line)
     }
 }
@@ -192,11 +194,15 @@ extension XCUIElement {
     /// (повідомлення з інших застосунків) з'являється згори й перекриває «+», «Назад», «Додати»:
     /// натискання дістається банеру, а не кнопці. У симуляторі банерів зазвичай немає — тоді просто натискає.
     @MainActor
-    func tapAfterSystemBanner() {
+    func tapAfterSystemBanner(file: StaticString = #filePath, line: UInt = #line) {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let banner = springboard.descendants(matching: .any).matching(identifier: "NotificationShortLookView").firstMatch
-        if banner.exists {
-            _ = banner.waitForNonExistence(timeout: systemBannerTimeout)
+        if banner.exists, !banner.waitForNonExistence(timeout: systemBannerTimeout) {
+            XCTFail(
+                "Системний банер сповіщення не зник за \(Int(systemBannerTimeout)) с і перекриває верх екрана — на iPhone увімкніть «Не турбувати»",
+                file: file, line: line
+            )
+            return
         }
         tap()
     }

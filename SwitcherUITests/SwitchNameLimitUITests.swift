@@ -95,7 +95,7 @@ final class SwitchNameLimitUITests: XCTestCase {
         in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line
     ) -> (field: XCUIElement, counter: XCUIElement) {
         XCTAssertTrue(app.addSwitchButton.waitForExistence(timeout: uiTimeout), "Немає кнопки додавання в списку", file: file, line: line)
-        app.addSwitchButton.tapAfterSystemBanner()
+        app.addSwitchButton.tapAfterSystemBanner(file: file, line: line)
 
         let field = app.addSwitchNameField
         XCTAssertTrue(field.waitForExistence(timeout: uiTimeout), "Немає поля назви на екрані додавання", file: file, line: line)
