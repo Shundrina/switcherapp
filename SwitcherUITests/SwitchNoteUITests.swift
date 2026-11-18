@@ -156,7 +156,10 @@ final class SwitchNoteUITests: XCTestCase {
         let field = app.switchNoteEditField
         XCTAssertTrue(field.waitForExistence(timeout: uiTimeout), "Натискання на примітку не відкрило поле")
         field.clearText()
-        XCTAssertTrue(waitForValue("", of: field), "Поле не очистилося: «\(field.value as? String ?? "")»")
+        XCTAssertTrue(waitForEmptyValue(of: field), "Поле не очистилося: \(String(describing: field.value))")
+        let counter = app.staticTexts[AccessibilityID.switchNoteEditCounter]
+        XCTAssertTrue(counter.waitForExistence(timeout: uiTimeout), "Немає лічильника під полем примітки")
+        XCTAssertTrue(waitForLabel("Символів: 0 з 200", of: counter), "Поле не очистилося: лічильник «\(counter.label)»")
 
         finishWithDone(field, in: app)
         XCTAssertTrue(waitForLabel(addNoteLabel, of: app.switchNoteButton), "У картці «\(app.switchNoteButton.label)»")
@@ -268,7 +271,7 @@ final class SwitchNoteUITests: XCTestCase {
         let frame = app.descendants(matching: .any).matching(identifier: AccessibilityID.addSwitchNoteFrame).firstMatch
         XCTAssertTrue(frame.waitForExistence(timeout: uiTimeout), "Немає елемента рамки поля «Примітка» (\(AccessibilityID.addSwitchNoteFrame))")
         // Рамка — увесь видимий прямокутник (не менше 56 pt, як у «Назви»), а поле — всередині неї.
-        XCTAssertGreaterThanOrEqual(frame.frame.height, 56, "Рамка поля «Примітка» нижча за 56 pt: \(frame.frame)")
+        XCTAssertGreaterThanOrEqual(frame.frame.height + layoutTolerance, 56, "Рамка поля «Примітка» нижча за 56 pt: \(frame.frame)")
         XCTAssertTrue(frame.frame.insetBy(dx: -1, dy: -1).contains(field.frame), "Поле \(field.frame) не всередині рамки \(frame.frame)")
         XCTAssertFalse(app.keyboards.firstMatch.exists, "Клавіатура відкрита ще до дотику")
 
@@ -299,7 +302,7 @@ final class SwitchNoteUITests: XCTestCase {
         XCTAssertEqual(noteButton.label, addNoteLabel)
         let window = app.windows.element(boundBy: 0).frame
         let target = noteButton.frame
-        XCTAssertGreaterThanOrEqual(target.height, 44, "Зона «Додати примітку» нижча за 44 pt: \(target)")
+        XCTAssertGreaterThanOrEqual(target.height + layoutTolerance, 44, "Зона «Додати примітку» нижча за 44 pt: \(target)")
         XCTAssertGreaterThanOrEqual(target.width, window.width / 2, "Зона «Додати примітку» лише завширшки як текст: \(target), вікно \(window.width) pt")
 
         // Правий край вмісту картки — 16 pt відступу екрана + 20 pt відступу картки; дотик на 50 pt від краю вікна
@@ -345,8 +348,12 @@ final class SwitchNoteUITests: XCTestCase {
         assertNoteSaved("Після їжі", field: field, in: app, after: "перемикання лампи")
     }
 
-    /// Редагується примітка (без «Готово») → обрати інший значок → значок обрано, поле закрилося,
-    /// примітку збережено.
+    /// Редагується примітка (без «Готово») → натиснути на видимий над клавіатурою значок → значок обрано,
+    /// поле закрилося, примітку збережено.
+    ///
+    /// З екранною клавіатурою (iPhone 15 Pro, iPhone 17e) перший ряд значків видно над клавіатурою, але
+    /// його нижня половина — разом із самим емодзі 🔥 — лежить під смугою панелі «Готово» на всю ширину
+    /// екрана. Смуга прозора (видно лише капсулу «Готово»), тож користувачка бачить 🔥 і натискає саме на нього.
     @MainActor
     func testChoosingIconEndsNoteEditingAndSavesNote() throws {
         let app = XCUIApplication.launchedForTesting()
@@ -356,9 +363,19 @@ final class SwitchNoteUITests: XCTestCase {
         let flame = app.buttons[AccessibilityID.iconOption("🔥")]
         XCTAssertTrue(flame.waitForExistence(timeout: uiTimeout), "Немає кнопки значка 🔥")
         XCTAssertFalse(flame.isSelected, "🔥 уже обрано — тест не перевірить зміну значка")
+
+        // Емодзі 🔥 (центр комірки) видно: воно вище за клавіатуру (низ панелі «Готово» — верх клавіатури
+        // разом зі смугою підказок) і не під кнопкою «Готово».
+        let done = app.noteKeyboardDoneButton
+        XCTAssertTrue(done.waitForExistence(timeout: uiTimeout), "Немає кнопки «Готово» над клавіатурою")
+        XCTAssertLessThan(flame.frame.midY, done.frame.maxY, "Центр 🔥 \(flame.frame) під клавіатурою (низ «Готово» \(done.frame)) — користувачка його не бачить")
+        XCTAssertFalse(done.frame.contains(CGPoint(x: flame.frame.midX, y: flame.frame.midY)), "Центр 🔥 \(flame.frame) під кнопкою «Готово» \(done.frame)")
         flame.tap()
 
-        XCTAssertTrue(waitForSelected(flame), "Натискання не обрало значок")
+        XCTAssertTrue(
+            waitForSelected(flame),
+            "Натискання на видиме над клавіатурою 🔥 \(flame.frame) не обрало значок: дотик забрала прозора панель «Готово» на всю ширину екрана"
+        )
         assertNoteSaved("Після їжі", field: field, in: app, after: "вибору значка")
     }
 
@@ -403,7 +420,7 @@ final class SwitchNoteUITests: XCTestCase {
     @MainActor
     private func openAddScreen(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertTrue(app.addSwitchButton.waitForExistence(timeout: uiTimeout), "Немає кнопки додавання в списку", file: file, line: line)
-        app.addSwitchButton.tap()
+        app.addSwitchButton.tapAfterSystemBanner()
         XCTAssertTrue(app.addSwitchNameField.waitForExistence(timeout: uiTimeout), "Немає поля назви на екрані додавання", file: file, line: line)
         XCTAssertTrue(
             waitUntilHittable(app.buttons[AccessibilityID.addSwitchSaveButton]),

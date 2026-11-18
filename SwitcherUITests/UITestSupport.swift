@@ -50,6 +50,10 @@ enum AccessibilityID {
 /// Скільки чекати на появу елемента: з урахуванням анімацій і повільного симулятора.
 let uiTimeout: TimeInterval = 10
 
+/// Похибка плаваючої коми в розмірах елементів: на екранах @3x з дробовим зсувом (наприклад, y = 252.67)
+/// висота 44 pt приходить як 43.99999999999997. Набагато менша за піксель (1/3 pt), тож вимог не послаблює.
+let layoutTolerance: CGFloat = 0.001
+
 extension XCUIApplication {
     /// Запускає застосунок у тестовому режимі: порожнє сховище в пам'яті, онбординг пропущено
     /// (або показано, якщо `showOnboarding`). `environment` — додаткові змінні середовища процесу
@@ -115,6 +119,22 @@ extension XCUIApplication {
         windows.element(boundBy: 0).scrollViews.firstMatch
     }
 
+    /// Прокручує екран перемикача вгору так, як це зробила б людина з відкритою екранною клавіатурою:
+    /// пальцем по видимій частині екрана над клавіатурою. `swipeUp()` по всьому `ScrollView` починає
+    /// жест там, де його закриває клавіатура, і тоді жест дістається клавіатурі, а не прокрутці.
+    /// Жест іде по правому полю екрана (поза картками й кнопками) — щоб це не сприйнялося як натискання.
+    @MainActor
+    func scrollSwitchScreenUpAboveKeyboard() {
+        let window = windows.element(boundBy: 0).frame
+        let keyboard = keyboards.firstMatch
+        // Верх клавіатури (без смуги підказок і панелі над нею, тож із запасом), або низ вікна, якщо клавіатури немає.
+        let visibleBottom = keyboard.exists ? min(keyboard.frame.minY, window.maxY) : window.maxY
+        let origin = coordinate(withNormalizedOffset: .zero)
+        let start = origin.withOffset(CGVector(dx: window.maxX - 8, dy: visibleBottom * 0.6))
+        let end = origin.withOffset(CGVector(dx: window.maxX - 8, dy: visibleBottom * 0.15))
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .default, thenHoldForDuration: 0.05)
+    }
+
     /// Рядок списку, у якому є елемент з назвою `name` (назву задає сам тест, тож вона стабільна).
     @MainActor
     func row(named name: String) -> XCUIElement {
@@ -126,7 +146,7 @@ extension XCUIApplication {
     @discardableResult
     func addSwitch(named name: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         XCTAssertTrue(addSwitchButton.waitForExistence(timeout: uiTimeout), "Немає кнопки додавання в списку", file: file, line: line)
-        addSwitchButton.tap()
+        addSwitchButton.tapAfterSystemBanner()
 
         let field = addSwitchNameField
         XCTAssertTrue(field.waitForExistence(timeout: uiTimeout), "Немає поля назви на екрані додавання", file: file, line: line)
@@ -135,7 +155,7 @@ extension XCUIApplication {
 
         let save = buttons[AccessibilityID.addSwitchSaveButton]
         XCTAssertTrue(save.waitForExistence(timeout: uiTimeout), "Немає кнопки «Додати»", file: file, line: line)
-        save.tap()
+        save.tapAfterSystemBanner()
 
         let row = row(named: name)
         XCTAssertTrue(row.waitForExistence(timeout: uiTimeout), "Рядок «\(name)» не з'явився в списку", file: file, line: line)
@@ -159,12 +179,28 @@ extension XCUIApplication {
     func goBackToList(file: StaticString = #filePath, line: UInt = #line) {
         let back = navigationBars.buttons.firstMatch
         XCTAssertTrue(back.waitForExistence(timeout: uiTimeout), "Немає кнопки «Назад»", file: file, line: line)
-        back.tap()
+        back.tapAfterSystemBanner()
         XCTAssertTrue(addSwitchButton.waitForExistence(timeout: uiTimeout), "Список не показано", file: file, line: line)
     }
 }
 
+/// Скільки чекати, поки системний банер сповіщення сховається сам (на iPhone — близько 5 с).
+let systemBannerTimeout: TimeInterval = 15
+
 extension XCUIElement {
+    /// Натискає, дочекавшись, поки зникне системний банер сповіщення. На справжньому iPhone банер
+    /// (повідомлення з інших застосунків) з'являється згори й перекриває «+», «Назад», «Додати»:
+    /// натискання дістається банеру, а не кнопці. У симуляторі банерів зазвичай немає — тоді просто натискає.
+    @MainActor
+    func tapAfterSystemBanner() {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let banner = springboard.descendants(matching: .any).matching(identifier: "NotificationShortLookView").firstMatch
+        if banner.exists {
+            _ = banner.waitForNonExistence(timeout: systemBannerTimeout)
+        }
+        tap()
+    }
+
     /// Свайп ліворуч, який відкриває дії рядка й не доходить до «повного свайпу»: `swipeLeft()` буває
     /// надто довгим, і тоді список одразу виконує першу дію, не показавши кнопку.
     @MainActor
@@ -195,6 +231,14 @@ extension XCTestCase {
     @MainActor
     func waitForValue(_ expected: String, of element: XCUIElement, timeout: TimeInterval = uiTimeout) -> Bool {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", expected), object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    /// Чекає, поки текстове поле стане порожнім. Порожній `UITextView` у симуляторі повертає
+    /// `value` == `""`, а на справжньому iPhone — `nil`; обидва означають «порожньо».
+    @MainActor
+    func waitForEmptyValue(of element: XCUIElement, timeout: TimeInterval = uiTimeout) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == nil OR value == ''"), object: element)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
 

@@ -15,7 +15,7 @@ final class SwitchNameLimitUITests: XCTestCase {
     func testAddFieldStopsAt30Characters() throws {
         let app = XCUIApplication.launchedForTesting()
         XCTAssertTrue(app.addSwitchButton.waitForExistence(timeout: uiTimeout), "Немає кнопки додавання в списку")
-        app.addSwitchButton.tap()
+        app.addSwitchButton.tapAfterSystemBanner()
 
         let field = app.addSwitchNameField
         XCTAssertTrue(field.waitForExistence(timeout: uiTimeout), "Немає поля назви на екрані додавання")
@@ -95,7 +95,7 @@ final class SwitchNameLimitUITests: XCTestCase {
         in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line
     ) -> (field: XCUIElement, counter: XCUIElement) {
         XCTAssertTrue(app.addSwitchButton.waitForExistence(timeout: uiTimeout), "Немає кнопки додавання в списку", file: file, line: line)
-        app.addSwitchButton.tap()
+        app.addSwitchButton.tapAfterSystemBanner()
 
         let field = app.addSwitchNameField
         XCTAssertTrue(field.waitForExistence(timeout: uiTimeout), "Немає поля назви на екрані додавання", file: file, line: line)

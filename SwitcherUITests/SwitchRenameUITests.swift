@@ -34,14 +34,14 @@ final class SwitchRenameUITests: XCTestCase {
         XCTAssertFalse(app.row(named: "Газ горить").exists, "У списку лишилася стара назва")
     }
 
-    /// Назва → поле → нова назва без «Готово» → прокрутити екран (`scrollDismissesKeyboard`) →
-    /// поле закрилося, нова назва на екрані перемикача і в списку.
+    /// Назва → поле → нова назва без «Готово» → прокрутити екран пальцем над екранною клавіатурою
+    /// (`scrollDismissesKeyboard`) → поле закрилося, нова назва на екрані перемикача і в списку.
     @MainActor
     func testScrollingEndsRenameAndSavesName() throws {
         let app = XCUIApplication.launchedForTesting()
         let (nameButton, field) = startRenaming(in: app, from: "Газ горить", to: "Газ вимкнено")
 
-        app.switchScreenScrollView.swipeUp()
+        app.scrollSwitchScreenUpAboveKeyboard()
 
         assertRenamed(in: app, nameButton: nameButton, field: field, from: "Газ горить", to: "Газ вимкнено", after: "прокрутки")
     }

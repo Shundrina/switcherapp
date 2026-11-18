@@ -117,7 +117,7 @@ final class IconPickerUITests: XCTestCase {
     @discardableResult
     private func openAddScreen(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         XCTAssertTrue(app.addSwitchButton.waitForExistence(timeout: uiTimeout), "Немає кнопки додавання в списку", file: file, line: line)
-        app.addSwitchButton.tap()
+        app.addSwitchButton.tapAfterSystemBanner()
         let field = app.addSwitchNameField
         XCTAssertTrue(field.waitForExistence(timeout: uiTimeout), "Немає поля назви на екрані додавання", file: file, line: line)
         XCTAssertTrue(

@@ -387,6 +387,19 @@ private final class KeyboardDoneBar: UIToolbar {
         sizeToFit()
     }
 
+    /// В iOS 26 панель прозора — видно лише капсулу «Готово», — тож дотик повз кнопку дістається
+    /// вмісту екрана під панеллю, як ніби панелі там немає.
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        let hit = super.hitTest(point, with: event)
+        guard #available(iOS 26, *) else { return hit }
+        var view = hit
+        while let current = view, current !== self {
+            if current is UIControl { return hit }
+            view = current.superview
+        }
+        return nil
+    }
+
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
