@@ -3,6 +3,9 @@ import SwiftData
 
 @Model
 final class SwitchItem {
+    /// Стабільний ідентифікатор для `userInfo` сповіщень. Легка міграція може дати наявним записам
+    /// однакове значення — їх лагодить `SwitchIdentity.repairDuplicates(in:)`.
+    var uuid: UUID = UUID()
     var name: String = ""
     var isOn: Bool = false
     var createdAt: Date = Date.now
@@ -14,6 +17,10 @@ final class SwitchItem {
 
     @Relationship(deleteRule: .cascade, inverse: \SwitchEvent.item)
     var events: [SwitchEvent]? = []
+
+    /// Правила нагадувань; видаляються разом із перемикачем.
+    @Relationship(deleteRule: .cascade, inverse: \ReminderRule.item)
+    var rules: [ReminderRule]? = []
 
     init(name: String, icon: SwitchIcon = .check, tone: SwitchTone = .amber, createdAt: Date = .now) {
         self.name = name
