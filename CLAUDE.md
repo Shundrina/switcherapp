@@ -41,15 +41,20 @@ xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
   -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO \
   -collect-test-diagnostics never -only-testing:'SwitcherTests/SwitcherTests/appModuleLoads()'
 
-# Екранні тести (повільні — після змін в інтерфейсі й перед злиттям гілки)
+# Екранні тести (повільні — після змін в інтерфейсі й перед злиттям гілки) — на iPhone 17e, з екранною клавіатурою
 xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
-  -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO \
+  -destination 'platform=iOS Simulator,name=iPhone 17e' CODE_SIGNING_ALLOWED=NO \
   -collect-test-diagnostics never -only-testing:SwitcherUITests
 
 # Один екранний тест (XCTest: Таргет/Клас/метод — без дужок)
 xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
-  -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO \
+  -destination 'platform=iOS Simulator,name=iPhone 17e' CODE_SIGNING_ALLOWED=NO \
   -collect-test-diagnostics never -only-testing:SwitcherUITests/AppLaunchUITests/testAppLaunches
+
+# Екранні тести на iPhone користувачки (телефон розблокований, «Не турбувати» увімкнено, Параметри → Розробник → «Увімкнути автоматизацію UI»)
+xcodebuild test -project Switcher.xcodeproj -scheme Switcher \
+  -destination 'id=00008130-000C30920EB8001C' -allowProvisioningUpdates DEVELOPMENT_TEAM=ZGQ55HHNXQ \
+  -collect-test-diagnostics never -only-testing:SwitcherUITests
 
 # Перевірка конфігу permissions/sandbox і захисту секретів (після змін у .claude/settings.json або .gitignore)
 bash scripts/sandbox-leak.test.sh
@@ -61,7 +66,9 @@ bash scripts/sandbox-leak.test.sh
 
 Без `-collect-test-diagnostics never` xcodebuild після падіння тесту ще близько 10 хвилин збирає діагностику симулятора і здається завислим.
 
-Якщо екранні тести падають з «Failed to prepare device … for impending launch» ще до запуску застосунку — це збій стану симулятора: `xcrun simctl shutdown "iPhone 17" && xcrun simctl boot "iPhone 17"` і запустити знову.
+Якщо екранні тести падають з «Failed to prepare device … for impending launch» ще до запуску застосунку — це збій стану симулятора: `xcrun simctl shutdown "iPhone 17e" && xcrun simctl boot "iPhone 17e"` і запустити знову.
+
+Екранні тести мають бачити екранну клавіатуру, як на iPhone: вона закриває пів екрана, і тести з апаратною клавіатурою Mac цього не помічають. Тому вони йдуть на «iPhone 17e» (розміром близький до iPhone 15 Pro користувачки), де «Connect Hardware Keyboard» вимкнено для цього пристрою (`defaults write com.apple.iphonesimulator DevicePreferences -dict-add <UDID> '<dict><key>ConnectHardwareKeyboard</key><false/></dict>'`, UDID — з `xcrun simctl list devices`). «iPhone 17» лишається для ручної перевірки. У тестах натискати лише на видимі над клавіатурою місця й прокручувати жестом над клавіатурою (`scrollSwitchScreenUpAboveKeyboard()`); порожнє поле на пристрої має `value == nil` — перевіряти через `waitForEmptyValue`.
 
 ## Домовленості
 
