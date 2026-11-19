@@ -7,6 +7,7 @@ struct ReminderSection: View {
     let item: SwitchItem
     @Environment(ReminderService.self) private var reminders: ReminderService?
     @Environment(\.openURL) private var openURL
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var editorTarget: ReminderEditorTarget?
 
     /// Правила в порядку створення; видалене, але ще не збережене правило не показується.
@@ -37,26 +38,36 @@ struct ReminderSection: View {
         }
     }
 
+    /// На великих розмірах шрифту — без дзвіночка й шеврона: уся ширина рядка для тексту.
     private func ruleRow(_ rule: ReminderRule) -> some View {
         let summary = ReminderFormatting.ruleSummary(
             condition: rule.condition, amount: rule.amount, unit: rule.unit, repeats: rule.repeats
         )
+        let visibleSummary = ReminderFormatting.ruleSummaryForDisplay(
+            condition: rule.condition, amount: rule.amount, unit: rule.unit, repeats: rule.repeats
+        )
+        let isLarge = typeSize.isAccessibilitySize
         return Button {
             editorTarget = .existing(rule)
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: "bell")
+                if !isLarge {
+                    Image(systemName: "bell")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(Theme.muted)
+                        .frame(width: 24)
+                }
+                Text(visibleSummary)
                     .font(.body.weight(.medium))
-                    .foregroundStyle(Theme.muted)
-                    .frame(width: 24)
-                Text(summary)
-                    .font(.body.weight(.medium))
+                    .wrapsWholeWords()
                     .foregroundStyle(Theme.ink)
                     .multilineTextAlignment(.leading)
-                Spacer(minLength: 8)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.muted)
+                Spacer(minLength: isLarge ? 0 : 8)
+                if !isLarge {
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.muted)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -74,15 +85,22 @@ struct ReminderSection: View {
             editorTarget = .new
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: "plus")
-                    .font(.body.weight(.semibold))
-                    .frame(width: 24)
-                Text("Додати нагадування")
-                    .font(.body.weight(.medium))
+                if typeSize.isAccessibilitySize {
+                    // Плюс — у рядку тексту, а не окремою колонкою, що забирала б ширину.
+                    Text("\(Image(systemName: "plus")) Додати нагадування")
+                        .font(.body.weight(.medium))
+                } else {
+                    Image(systemName: "plus")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 24)
+                    Text("Додати нагадування")
+                        .font(.body.weight(.medium))
+                }
                 Spacer(minLength: 0)
             }
             .foregroundStyle(Theme.ink)
             .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .frame(minHeight: 52)
             .contentShape(Rectangle())
         }
@@ -108,9 +126,11 @@ struct ReminderSection: View {
                 Text("Відкрити Параметри")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.background)
+                    .multilineTextAlignment(.center)
                     .padding(.horizontal, 16)
-                    .frame(height: 40)
-                    .background(Theme.ink, in: Capsule())
+                    .padding(.vertical, 8)
+                    .frame(minHeight: 40)
+                    .background(Theme.ink, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("openNotificationSettingsButton")

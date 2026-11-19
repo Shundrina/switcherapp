@@ -83,4 +83,12 @@ nonisolated enum ReminderFormatting {
         }
         return "Через \(duration)\(when)" + (repeats ? " · повтор" : "")
     }
+
+    /// Видимий текст рядка правила: як `ruleSummary`, але навколо «·» нерозривні пробіли, тож
+    /// «· повтор» переноситься разом із попереднім словом, а не лишає крапку в кінці рядка.
+    static func ruleSummaryForDisplay(condition: ReminderCondition, amount: Int, unit: ReminderUnit,
+                                      repeats: Bool) -> String {
+        ruleSummary(condition: condition, amount: amount, unit: unit, repeats: repeats)
+            .replacingOccurrences(of: " · ", with: "\u{00A0}·\u{00A0}")
+    }
 }

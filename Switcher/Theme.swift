@@ -55,3 +55,12 @@ extension View {
             .foregroundStyle(Theme.muted)
     }
 }
+
+extension Text {
+    /// Переносить текст лише між словами. Для українського тексту SwiftUI сам розставляє переноси
+    /// посеред слова («уві-/мкнено»); правила англійської мови кирилиці не ділять, а на вигляд
+    /// літер мова набору не впливає.
+    func wrapsWholeWords() -> Text {
+        typesettingLanguage(.explicit(Locale.Language(identifier: "en")))
+    }
+}

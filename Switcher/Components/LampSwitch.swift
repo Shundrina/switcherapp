@@ -4,6 +4,9 @@ import SwiftUI
 struct LampSwitch: View {
     let isOn: Bool
     var large = false
+    /// Доріжка ввімкненого тумблера. За замовчуванням — темна, для кольорової картки перемикача.
+    var onTrack = Theme.onTone
+    var knob = Color.white
 
     var body: some View {
         let width: CGFloat = large ? 64 : 52
@@ -11,11 +14,11 @@ struct LampSwitch: View {
         let inset: CGFloat = large ? 4 : 3
 
         Capsule()
-            .fill(isOn ? Theme.onTone : Theme.track)
+            .fill(isOn ? onTrack : Theme.track)
             .frame(width: width, height: height)
             .overlay(alignment: isOn ? .trailing : .leading) {
                 Circle()
-                    .fill(.white)
+                    .fill(knob)
                     .frame(width: height - inset * 2, height: height - inset * 2)
                     .padding(inset)
             }
@@ -26,12 +29,14 @@ struct LampSwitch: View {
 /// Стиль для `Toggle`, що малює його як `LampSwitch`.
 struct LampToggleStyle: ToggleStyle {
     var large = false
+    var onTrack = Theme.onTone
+    var knob = Color.white
 
     func makeBody(configuration: Configuration) -> some View {
         Button {
             configuration.isOn.toggle()
         } label: {
-            LampSwitch(isOn: configuration.isOn, large: large)
+            LampSwitch(isOn: configuration.isOn, large: large, onTrack: onTrack, knob: knob)
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
         }

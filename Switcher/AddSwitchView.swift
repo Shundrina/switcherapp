@@ -20,24 +20,14 @@ struct AddSwitchView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    Button("Скасувати") { dismiss() }
-                        .font(.body.weight(.medium))
-                        .frame(minHeight: 44)
-                        .accessibilityIdentifier("addSwitchCancelButton")
-                    Spacer()
-                    Button(action: save) {
-                        Text("Додати")
-                            .font(.headline)
-                            .foregroundStyle(Theme.background)
-                            .padding(.horizontal, 20)
-                            .frame(height: 44)
-                            .background(Theme.ink, in: Capsule())
-                    }
-                    .opacity(savedName.isEmpty ? 0.4 : 1)
-                    .disabled(savedName.isEmpty)
-                    .accessibilityIdentifier("addSwitchSaveButton")
-                }
+                SheetHeader(
+                    confirmTitle: "Додати",
+                    isConfirmEnabled: !savedName.isEmpty,
+                    cancelIdentifier: "addSwitchCancelButton",
+                    confirmIdentifier: "addSwitchSaveButton",
+                    onCancel: { dismiss() },
+                    onConfirm: save
+                )
                 Text("Новий перемикач")
                     .font(.title.bold())
                     .foregroundStyle(Theme.ink)

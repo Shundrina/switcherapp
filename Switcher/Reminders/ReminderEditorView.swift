@@ -22,12 +22,14 @@ struct ReminderEditorView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(ReminderService.self) private var reminders: ReminderService?
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var draft: ReminderRuleDraft
     /// Текст поля числа; порожнє поле — число 0, і «Зберегти» неактивна.
     @State private var amountText: String
     @State private var isAmountFocused = false
     /// Ширина поля числа росте з розміром шрифту, щоб три цифри не обрізалися.
     @ScaledMetric(relativeTo: .title3) private var amountFieldWidth: CGFloat = 76
+    @ScaledMetric(relativeTo: .title3) private var amountFieldHeight: CGFloat = 52
 
     init(item: SwitchItem, target: ReminderEditorTarget) {
         self.item = item
@@ -47,26 +49,19 @@ struct ReminderEditorView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    Button("Скасувати") { dismiss() }
-                        .font(.body.weight(.medium))
-                        .frame(minHeight: 44)
-                        .accessibilityIdentifier("reminderEditorCancelButton")
-                    Spacer()
-                    Button(action: save) {
-                        Text("Зберегти")
-                            .font(.headline)
-                            .foregroundStyle(Theme.background)
-                            .padding(.horizontal, 20)
-                            .frame(height: 44)
-                            .background(Theme.ink, in: Capsule())
-                    }
-                    .opacity(draft.canSave ? 1 : 0.4)
-                    .disabled(!draft.canSave)
-                    .accessibilityIdentifier("reminderEditorSaveButton")
-                }
+                SheetHeader(
+                    confirmTitle: "Зберегти",
+                    isConfirmEnabled: draft.canSave,
+                    cancelIdentifier: "reminderEditorCancelButton",
+                    confirmIdentifier: "reminderEditorSaveButton",
+                    onCancel: { dismiss() },
+                    onConfirm: save
+                )
+                // Жирне «нагадування» на найбільших розмірах шрифту ширше за екран — заголовок
+                // росте лише до розміру, на якому слово ще влазить.
                 Text(existingRule == nil ? "Нове нагадування" : "Нагадування")
                     .font(.title.bold())
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
                     .foregroundStyle(Theme.ink)
                     .padding(.horizontal, 4)
                 field("Коли") {
@@ -78,10 +73,14 @@ struct ReminderEditorView: View {
                     )
                 }
                 field("Через") {
-                    HStack(spacing: 10) {
+                    // На великих розмірах шрифту поле числа — окремим рядком над одиницями.
+                    let layout = typeSize.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                        : AnyLayout(HStackLayout(spacing: 10))
+                    layout {
                         let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
                         ReminderAmountField(text: $amountText, isFocused: $isAmountFocused)
-                            .frame(width: amountFieldWidth, height: 52)
+                            .frame(width: amountFieldWidth, height: amountFieldHeight)
                             .background(Theme.surface, in: shape)
                             .overlay(shape.strokeBorder(Theme.ink, lineWidth: 2).opacity(isAmountFocused ? 1 : 0))
                         OptionRow(
@@ -121,32 +120,58 @@ struct ReminderEditorView: View {
         }
     }
 
+    /// На великих розмірах шрифту тумблер — під текстом, щоб «Повторювати» не рвалося.
     private var repeatRow: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Повторювати")
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(Theme.ink)
-                Text("Ще 2 рази, кожні 10 хв")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.muted)
+        Group {
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    repeatText
+                    repeatToggle
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 12) {
+                    repeatText
+                    Spacer()
+                    repeatToggle
+                }
             }
-            Spacer()
-            Toggle("Повторювати", isOn: $draft.repeats)
-                .labelsHidden()
-                .toggleStyle(LampToggleStyle())
-                .accessibilityIdentifier("reminderRepeatToggle")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
+    private var repeatText: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            // Одне довге слово: на найбільших розмірах шрифту трохи зменшується, а не рветься.
+            Text("Повторювати")
+                .font(.body.weight(.medium))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text("Ще 2 рази, кожні 10 хв")
+                .font(.footnote)
+                .foregroundStyle(Theme.muted)
+        }
+    }
+
+    /// Доріжка ввімкненого тумблера — колір тексту теми: контрастна до картки і в світлій, і в темній темі.
+    private var repeatToggle: some View {
+        Toggle("Повторювати", isOn: $draft.repeats)
+            .labelsHidden()
+            .toggleStyle(LampToggleStyle(onTrack: Theme.ink, knob: Theme.surface))
+            .accessibilityIdentifier("reminderRepeatToggle")
+    }
+
     /// Як виглядатиме перше сповіщення.
     private var preview: some View {
         HStack(alignment: .top, spacing: 12) {
-            IconBubble(icon: item.icon, isOn: false, size: 40)
-                .accessibilityHidden(true)
+            // На великих розмірах шрифту значок уже є в заголовку, а місця для тексту мало.
+            if !typeSize.isAccessibilitySize {
+                IconBubble(icon: item.icon, isOn: false, size: 40)
+                    .accessibilityHidden(true)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(ReminderFormatting.title(icon: item.icon, name: item.name))
                     .font(.subheadline.weight(.semibold))
@@ -210,15 +235,19 @@ struct ReminderEditorView: View {
 }
 
 /// Ряд кнопок-варіантів однакової ширини; вибраний — темний.
+/// На великих розмірах шрифту — вертикальним списком на всю ширину, щоб слова не рвалися.
 private struct OptionRow<Value: Hashable>: View {
     let options: [Value]
     @Binding var selection: Value
     let title: KeyPath<Value, String>
     var accessibilityTitle: KeyPath<Value, String>?
     let identifier: (Value) -> String
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(spacing: 8) {
+        let isLarge = typeSize.isAccessibilitySize
+        let layout = isLarge ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))
+        layout {
             ForEach(options, id: \.self) { option in
                 let isSelected = option == selection
                 Button {
@@ -227,10 +256,11 @@ private struct OptionRow<Value: Hashable>: View {
                     Text(option[keyPath: title])
                         .font(.subheadline.weight(.semibold))
                         .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
+                        .lineLimit(isLarge ? nil : 2)
+                        .minimumScaleFactor(isLarge ? 1 : 0.8)
                         .foregroundStyle(isSelected ? Theme.background : Theme.ink)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, isLarge ? 16 : 6)
+                        .padding(.vertical, isLarge ? 8 : 0)
                         .frame(maxWidth: .infinity, minHeight: 52)
                         .background(isSelected ? Theme.ink : Theme.surface,
                                     in: RoundedRectangle(cornerRadius: 14, style: .continuous))
